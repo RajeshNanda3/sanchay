@@ -1,0 +1,283 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -------------------------------
+// ENUMS
+// -------------------------------
+
+enum EntityType {
+  USER
+  VENDOR
+  ADMIN
+}
+
+enum TxnType {
+  PURCHASE
+  ISSUE
+  REDEEM
+  REFERRAL
+  VENDOR_TRANSFER
+}
+
+enum Direction {
+  CREDIT
+  DEBIT
+}
+
+// -------------------------------
+// USER MODEL (Vendor + Customer + Admin)
+// -------------------------------
+
+model User {
+  id     String     @id @default(uuid())
+  name   String
+  email  String     @unique
+  mobile String     @unique
+  role   EntityType @default(USER)
+
+  password String
+
+  refferred_by  String? // Who referred this user
+  refferal_code String? @unique // Code for inviting others
+
+  points Int @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  userProfile     UserProfile?   @relation("User_Profile")
+  vendorProfile   VendorProfile? @relation("Vendor_Profile")
+  offers          Offer[]        @relation("VendorOffers")
+  ratingsGiven    Rating[]       @relation("CustomerRatings")
+  ratingsReceived Rating[]       @relation("VendorRatings")
+
+  ledgerUser          TransactionLedger[] @relation("LedgerUser")
+  ledgerCorrespondent TransactionLedger[] @relation("LedgerCorrespondent")
+
+  vendorPurchases        VendorPurchase[]     @relation("VendorPurchases")
+  pointIssuances         PointIssuance[]      @relation("PointIssuances")
+  pointIssuancesReceived PointIssuance[]      @relation("PointIssuancesReceived")
+  redemptions            Redemption[]         @relation("Redemptions")
+  redemptionsReceived    Redemption[]         @relation("RedemptionsReceived")
+  referralCommissions    ReferralCommission[] @relation("ReferralCommissions")
+  referralBenefits       ReferralCommission[] @relation("ReferralCommissionsBeneficiary")
+
+  vendorTransfersSent     VendorTransfer[] @relation("VendorTransfersSent")
+  vendorTransfersReceived VendorTransfer[] @relation("VendorTransfersReceived")
+}
+
+model UserProfile {
+  profile_id String    @id @default(uuid())
+  user_id    String    @unique
+  dob        DateTime?
+  avatar     String? // url/path to avatar
+
+  // explicit address fields
+  address_at     String?
+  address_po     String?
+  address_market String?
+  address_dist   String?
+  address_pin    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user User @relation("User_Profile", fields: [user_id], references: [id])
+}
+
+model VendorProfile {
+  vendor_profile_id String       @id @default(uuid())
+  vendor_id         String       @unique
+  store_name        String
+  category          String?
+  market_name       String?
+  deals_with        String[]     @default([]) // array of categories/vendors they deal with
+  redeem_option     RedeemOption @default(PENDING)
+
+  // explicit address fields
+  address_at     String?
+  address_po     String?
+  address_market String?
+  address_dist   String?
+  address_pin    String?
+
+  avatar     String?
+  banner     String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  vendor User @relation("Vendor_Profile", fields: [vendor_id], references: [id])
+}
+
+model Offer {
+  offer_id    String   @id @default(uuid())
+  vendor_id   String
+  title       String
+  description String?
+  active      Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  vendor User @relation("VendorOffers", fields: [vendor_id], references: [id])
+}
+
+model Rating {
+  rating_id   String   @id @default(uuid())
+  vendor_id   String
+  customer_id String
+  stars       Int
+  comment     String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  vendor   User @relation("VendorRatings", fields: [vendor_id], references: [id])
+  customer User @relation("CustomerRatings", fields: [customer_id], references: [id])
+
+  @@unique([vendor_id, customer_id])
+}
+
+// -------------------------------
+// MASTER LEDGER (EVERY TRANSACTION GOES HERE)
+// -------------------------------
+
+model TransactionLedger {
+  transaction_id String @id @default(uuid())
+
+  user_id          String // Who performed the transaction
+  correspondent_id String // The other party
+
+  type       TxnType
+  direction  Direction
+  amount     Int
+  created_at DateTime  @default(now())
+
+  user          User @relation("LedgerUser", fields: [user_id], references: [id])
+  correspondent User @relation("LedgerCorrespondent", fields: [correspondent_id], references: [id])
+
+  // Reverse relations
+  vendor_purchase     VendorPurchase[]
+  point_issuance      PointIssuance[]
+  redemption          Redemption[]
+  referral_commission ReferralCommission[]
+  vendor_transfer     VendorTransfer[]
+}
+
+// -------------------------------
+// PURCHASE: Vendor buys points
+// -------------------------------
+
+model VendorPurchase {
+  purchase_id      String @id @default(uuid())
+  transaction_id   String @unique
+  vendor_id        String
+  points_purchased Int
+
+  ledger TransactionLedger @relation(fields: [transaction_id], references: [transaction_id])
+  vendor User              @relation("VendorPurchases", fields: [vendor_id], references: [id])
+}
+
+// -------------------------------
+// ISSUE: Vendor gives points to customer
+// -------------------------------
+
+model PointIssuance {
+  issuance_id    String @id @default(uuid())
+  transaction_id String @unique
+
+  vendor_id     String
+  customer_id   String
+  points_issued Int
+  bill_amount    Int?
+
+  ledger   TransactionLedger @relation(fields: [transaction_id], references: [transaction_id])
+  vendor   User              @relation("PointIssuances", fields: [vendor_id], references: [id])
+  customer User              @relation("PointIssuancesReceived", fields: [customer_id], references: [id])
+}
+
+// -------------------------------
+// REDEEM: Customer redeems points with a vendor
+// -------------------------------
+
+model Redemption {
+  redemption_id  String @id @default(uuid())
+  transaction_id String @unique
+
+  customer_id String
+  vendor_id   String
+  points_used Int
+
+  ledger   TransactionLedger @relation(fields: [transaction_id], references: [transaction_id])
+  customer User              @relation("Redemptions", fields: [customer_id], references: [id])
+  vendor   User              @relation("RedemptionsReceived", fields: [vendor_id], references: [id])
+}
+
+// -------------------------------
+// REFERRAL COMMISSION: 
+// Customer gets points & referrer gets 10%
+// -------------------------------
+
+model ReferralCommission {
+  referral_id    String @id @default(uuid())
+  transaction_id String @unique
+
+  referrer_id       String
+  beneficiary_id    String
+  commission_points Int
+
+  ledger      TransactionLedger @relation(fields: [transaction_id], references: [transaction_id])
+  referrer    User              @relation("ReferralCommissions", fields: [referrer_id], references: [id])
+  beneficiary User              @relation("ReferralCommissionsBeneficiary", fields: [beneficiary_id], references: [id])
+}
+
+// -------------------------------
+// VENDOR → VENDOR TRANSFER
+// -------------------------------
+
+model VendorTransfer {
+  transfer_id    String @id @default(uuid())
+  transaction_id String @unique
+
+  sender_vendor_id   String
+  receiver_vendor_id String
+  points_transferred Int
+
+  ledger TransactionLedger @relation(fields: [transaction_id], references: [transaction_id])
+
+  sender   User @relation("VendorTransfersSent", fields: [sender_vendor_id], references: [id])
+  receiver User @relation("VendorTransfersReceived", fields: [receiver_vendor_id], references: [id])
+}
+
+model PurchaseRequest {
+  request_id  String        @id @default(uuid())
+  vendor_id   String
+  points      Int
+  status      RequestStatus @default(PENDING)
+  created_at  DateTime      @default(now())
+  approved_at DateTime?
+
+  // Optional admin approver
+  approved_by String?
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RedeemOption {
+  PENDING
+  APPROVED
+}
