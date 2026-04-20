@@ -2,7 +2,7 @@ import express from "express";
 import { upload } from "../middlewares/multer.js";
 import uploadOnCloudinary from "../middlewares/cloudinary.js";
 import fs from "fs";
-import { rateLimiter } from "../middlewares/rateLimiter.js";
+import { rateLimiter } from "../middlewares/ratelimiter.js";
 import {
   registerUser,
   verifyOTPRegister,
