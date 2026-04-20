@@ -666,7 +666,7 @@ export const getAllVendors = trycatch(async (req, res) => {
     const vendorsData = JSON.parse(cachedVendors);
     return res.status(200).json({
       message: "Vendors fetched from cache",
-      vendors: vendorsData,
+      vendors: vendorsData, 
     });
   }
 
