@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { AppData } from "../context/AppContext";
 import api from "../apiInterceptor";
 import { toast } from "react-toastify";
+import QrScanner from "qr-scanner";
 
 const IssuePoint = () => {
   const { user, setUser } = AppData();
@@ -15,9 +16,17 @@ const IssuePoint = () => {
   const [customerError, setCustomerError] = useState("");
   const [issueHistory, setIssueHistory] = useState([]);
   const [fetchingHistory, setFetchingHistory] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const videoRef = useRef(null);
+  const scannerRef = useRef(null);
 
   useEffect(() => {
     fetchCustomers();
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.destroy();
+      }
+    };
   }, []);
 
   const fetchCustomers = async () => {
@@ -68,6 +77,48 @@ const IssuePoint = () => {
       setSelectedCustomer(found);
       fetchCustomerIssueHistory(found.id);
     }
+  };
+
+  const startScanning = async () => {
+    try {
+      setIsScanning(true);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      const videoElement = videoRef.current;
+      if (!videoElement) {
+        throw new Error("Video element not ready");
+      }
+
+      const scanner = new QrScanner(
+        videoElement,
+        (result) => {
+          setCustomerIdentifier(result.data);
+          stopScanning();
+          resolveCustomer();
+        },
+        {
+          onDecodeError: (err) => {
+            console.error(err);
+          },
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+        },
+      );
+      scannerRef.current = scanner;
+      await scanner.start();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to start camera");
+      setIsScanning(false);
+    }
+  };
+
+  const stopScanning = () => {
+    if (scannerRef.current) {
+      scannerRef.current.destroy();
+      scannerRef.current = null;
+    }
+    setIsScanning(false);
   };
 
   const handleSubmit = async (e) => {
@@ -162,7 +213,25 @@ const IssuePoint = () => {
               >
                 Lookup
               </button>
+              <button
+                type="button"
+                onClick={isScanning ? stopScanning : startScanning}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+              >
+                {isScanning ? "Stop Scan" : "Scan QR"}
+              </button>
             </div>
+            {isScanning && (
+              <div className="mt-4">
+                <video
+                  ref={videoRef}
+                  className="w-full max-w-md mx-auto border border-gray-300 rounded"
+                ></video>
+                <p className="text-center text-sm text-gray-600 mt-2">
+                  Scanning for QR code...
+                </p>
+              </div>
+            )}
             {customerError && (
               <p className="text-red-500 text-sm mt-1">{customerError}</p>
             )}

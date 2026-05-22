@@ -21,7 +21,7 @@ const Home = () => {
 
           <h1 className="text-4xl md:text-6xl font-black leading-tight text-white max-w-4xl mx-auto">
             Turn every purchase into{" "}
-            <span className="text-[#c6f135]">pure gold</span>.
+            <span className="text-[#c6f135]">pure Saving</span>.
           </h1>
           <p className="mt-6 text-lg md:text-xl text-[#c6f135] max-w-3xl mx-auto">
             Sanchay is a next-generation loyalty platform connecting customers

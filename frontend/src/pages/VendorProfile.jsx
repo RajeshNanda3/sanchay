@@ -32,6 +32,12 @@ const VendorProfile = () => {
     avatar: null,
     avatarPreview: null,
   });
+  const [avatarInfo, setAvatarInfo] = useState({
+    name: "",
+    size: 0,
+    compressed: false,
+    error: "",
+  });
   const [savingStore, setSavingStore] = useState(false);
 
   // Load profile on mount
@@ -80,16 +86,126 @@ const VendorProfile = () => {
     setPersonalData((f) => ({ ...f, [name]: value }));
   };
 
+  const MAX_IMAGE_SIZE = 1024 * 1024;
+  const MAX_IMAGE_DIMENSION = 1920;
+
+  const compressImageFileIfRequired = async (file) => {
+    if (!file || !file.type.startsWith("image/")) return file;
+    if (file.size <= MAX_IMAGE_SIZE) return file;
+
+    const imageUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.src = imageUrl;
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+    URL.revokeObjectURL(imageUrl);
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+    let width = image.naturalWidth;
+    let height = image.naturalHeight;
+    let quality = 0.92;
+    const maxDimension = Math.max(width, height);
+    if (maxDimension > MAX_IMAGE_DIMENSION) {
+      const ratio = MAX_IMAGE_DIMENSION / maxDimension;
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    let currentWidth = width;
+    let currentHeight = height;
+
+    const toBlob = () =>
+      new Promise((resolve) => {
+        canvas.toBlob(resolve, mimeType, quality);
+      });
+
+    const compress = async () => {
+      canvas.width = currentWidth;
+      canvas.height = currentHeight;
+      ctx.clearRect(0, 0, currentWidth, currentHeight);
+      ctx.drawImage(image, 0, 0, currentWidth, currentHeight);
+      return await toBlob();
+    };
+
+    let blob = await compress();
+    while (blob && blob.size > MAX_IMAGE_SIZE) {
+      if (quality > 0.35) {
+        quality -= 0.1;
+      } else if (currentWidth > 600 && currentHeight > 600) {
+        currentWidth = Math.round(currentWidth * 0.9);
+        currentHeight = Math.round(currentHeight * 0.9);
+      } else {
+        break;
+      }
+      blob = await compress();
+    }
+
+    if (blob && blob.size <= MAX_IMAGE_SIZE) {
+      const extension = mimeType === "image/png" ? ".png" : ".jpg";
+      const fileName = file.name.replace(/\.[^/.]+$/, extension);
+      return new File([blob], fileName, { type: mimeType });
+    }
+
+    return file;
+  };
+
   // Handle store data change
-  const handleStoreChange = (e) => {
+  const handleStoreChange = async (e) => {
     const { name, value, files } = e.target;
     if (name === "avatar" && files && files[0]) {
       const file = files[0];
+      if (!file.type.startsWith("image/")) {
+        setAvatarInfo({
+          name: "",
+          size: 0,
+          compressed: false,
+          error: "Please choose a valid image file.",
+        });
+        return;
+      }
+
       setStoreData((f) => ({
         ...f,
         avatar: file,
         avatarPreview: URL.createObjectURL(file),
       }));
+      setAvatarInfo({
+        name: file.name,
+        size: file.size,
+        compressed: false,
+        error: "",
+      });
+
+      try {
+        const compressedFile = await compressImageFileIfRequired(file);
+        setStoreData((f) => ({
+          ...f,
+          avatar: compressedFile,
+          avatarPreview: URL.createObjectURL(compressedFile),
+        }));
+        setAvatarInfo({
+          name: compressedFile.name,
+          size: compressedFile.size,
+          compressed: compressedFile.size < file.size,
+          error:
+            compressedFile.size > MAX_IMAGE_SIZE
+              ? "Image is still larger than 1MB after compression. Please try a smaller photo."
+              : "",
+        });
+      } catch (err) {
+        console.error(err);
+        setAvatarInfo({
+          name: "",
+          size: 0,
+          compressed: false,
+          error:
+            "Failed to process the image. Please try a different file or smaller image.",
+        });
+      }
     } else {
       setStoreData((f) => ({ ...f, [name]: value }));
     }
@@ -142,7 +258,8 @@ const VendorProfile = () => {
       form.append("address_dist", storeData.address_dist);
       form.append("address_pin", storeData.address_pin);
       if (storeData.avatar) {
-        form.append("avatar", storeData.avatar);
+        const finalAvatar = await compressImageFileIfRequired(storeData.avatar);
+        form.append("avatar", finalAvatar);
       }
 
       const res = await api.post("/api/v1/vendor/profile", form, {
@@ -422,14 +539,43 @@ const VendorProfile = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Store Avatar
               </label>
-              <input
-                name="avatar"
-                type="file"
-                accept="image/*"
-                onChange={handleStoreChange}
-                disabled={!editStore}
-                className="block w-full disabled:cursor-not-allowed"
-              />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <label
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-sm font-medium text-gray-700 border border-gray-300 rounded-lg shadow-sm transition hover:bg-gray-50 ${
+                    editStore
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  Choose Image
+                  <input
+                    name="avatar"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleStoreChange}
+                    disabled={!editStore}
+                    className="hidden"
+                  />
+                </label>
+                <div className="text-sm text-gray-600">
+                  PNG/JPG preferred. Images are automatically compressed to 1MB.
+                </div>
+              </div>
+              {avatarInfo.name && (
+                <p className="mt-2 text-sm text-gray-700">
+                  Selected file:{" "}
+                  <span className="font-medium">{avatarInfo.name}</span> —{" "}
+                  <span className="font-medium">
+                    {(avatarInfo.size / 1024).toFixed(1)} KB
+                  </span>{" "}
+                  {avatarInfo.compressed && (
+                    <span className="text-green-600">(compressed)</span>
+                  )}
+                </p>
+              )}
+              {avatarInfo.error && (
+                <p className="text-red-500 text-sm mt-1">{avatarInfo.error}</p>
+              )}
               {storeData.avatarPreview && (
                 <img
                   src={storeData.avatarPreview}

@@ -170,8 +170,8 @@ const Register = () => {
       <div className="absolute inset-0 bg-linear-to-br from-[#0c0b16] via-[#09070f] to-[#120d19] opacity-90"></div>
       <div className="absolute bottom-16 -right-20 h-80 w-80 rounded-full bg-[#f5d17f]/10 blur-3xl"></div>
       <div className="relative container mx-auto px-6 py-16">
-        <div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] items-center">
-          <div className="space-y-8">
+        <div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="order-2 lg:order-1 space-y-8">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#6b5c2b]/40 bg-[#2c271a]/80 px-4 py-2 text-sm uppercase tracking-[0.2em] text-[#f5d17f] shadow-lg shadow-black/20">
               {showOtpVerification
                 ? "OTP verification"
@@ -214,7 +214,7 @@ const Register = () => {
           {showOtpVerification ? (
             <form
               onSubmit={verifyOtpHandler}
-              className="w-full rounded-4xl border border-white/10 bg-[#0f0d18]/95 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
+              className="order-1 lg:order-2 w-full rounded-4xl border border-white/10 bg-[#0f0d18]/95 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
             >
               <div className="mb-8 text-center">
                 <p className="text-sm uppercase tracking-[0.35em] text-[#f5d17f]">

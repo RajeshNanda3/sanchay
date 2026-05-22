@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AppData } from "../context/AppContext";
 import api from "../apiInterceptor";
 import { toast } from "react-toastify";
+import QRCode from "react-qr-code";
 
 const CustomerProfile = () => {
   const { user, setUser } = AppData();
@@ -193,6 +194,19 @@ const CustomerProfile = () => {
               </p>
             </div>
           </div>
+          {/* QR Code for User ID */}
+          <div className="mt-6 text-center">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Your QR Code
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Show this QR code to vendors for quick point issuance.
+            </p>
+            <div className="inline-block bg-white p-4 rounded-lg shadow">
+              <QRCode value={user.id.toString()} size={128} />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">User ID: {user.id}</p>
+          </div>
         </div>
 
         {/* Personal Details Form */}
@@ -245,7 +259,7 @@ const CustomerProfile = () => {
           <form onSubmit={handleSaveProfile} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date of Birth 
+                Date of Birth
               </label>
               <input
                 type="date"
