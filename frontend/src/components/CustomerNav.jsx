@@ -37,6 +37,12 @@ const CustomerNav = () => {
                 <Link to="/redeem" className="transition hover:text-white">
                   Redeem Points
                 </Link>
+                <Link
+                  to="/request-points-qr"
+                  className="transition hover:text-white"
+                >
+                  Scan QR
+                </Link>
                 <Link to="/profile" className="transition hover:text-white">
                   Profile
                 </Link>
@@ -123,6 +129,12 @@ const CustomerNav = () => {
                 className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
               >
                 Redeem Points
+              </Link>
+              <Link
+                to="/request-points-qr"
+                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+              >
+                Scan QR
               </Link>
               <Link
                 to="/profile"

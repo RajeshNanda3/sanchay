@@ -180,7 +180,20 @@ const RedeemPoint = () => {
               {vendors.map((v) => (
                 <div key={v.id} className="bg-white p-4 rounded shadow">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-800">{v.name}</h3>
+                    <div className="flex items-center gap-3">
+                      {v.vendorProfile?.avatar ? (
+                        <img
+                          src={v.vendorProfile.avatar}
+                          alt={v.vendorProfile?.store_name || v.name}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                          {v.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <h3 className="font-semibold text-gray-800">{v.name}</h3>
+                    </div>
                     <span className="text-sm text-gray-500">{v.mobile}</span>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">Email: {v.email}</p>

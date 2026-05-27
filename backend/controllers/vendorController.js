@@ -2,6 +2,7 @@ import { prisma } from "../config/prisma.js";
 import trycatch from "../middlewares/trycatch.js";
 import cloudinary from "../services/cloudinaryService.js";
 import fs from "fs";
+import { issuePoints } from "../services/transactionService.js";
 
 export const createPurchaseRequest = async (req, res) => {
   try {
@@ -40,6 +41,200 @@ export const getPurchaseRequests = trycatch(async (req, res) => {
   res.status(200).json({
     message: "Purchase requests fetched successfully",
     requests,
+  });
+});
+
+export const createVendorQrCode = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const { points, title } = req.body;
+  console.log(points, title);
+  const parsedPoints = parseInt(points, 10);
+  console.log(parsedPoints);
+  if (!Number.isInteger(parsedPoints) || parsedPoints <= 0) {
+    return res
+      .status(400)
+      .json({ error: "Points must be a positive integer." });
+  }
+  console.log("first");
+  const qrCode = await prisma.vendorQrCode.create({
+    data: {
+      vendor_id: vendorId,
+      points: parsedPoints,
+      title: title?.trim() || null,
+    },
+  });
+  console.log(qrCode);
+  res.status(201).json({
+    message: "Vendor QR code created successfully",
+    qrCode,
+    qrValue: `vendorqr:${qrCode.qr_id}`,
+  });
+});
+
+export const getVendorQrCodes = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const qrCodes = await prisma.vendorQrCode.findMany({
+    where: { vendor_id: vendorId },
+    orderBy: { created_at: "desc" },
+  });
+
+  res.status(200).json({
+    message: "Vendor QR codes fetched successfully",
+    qrCodes,
+  });
+});
+
+export const updateVendorQrCode = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const { id } = req.params;
+  const { points, title, active } = req.body;
+
+  const qrCode = await prisma.vendorQrCode.findUnique({
+    where: { qr_id: id },
+  });
+
+  if (!qrCode || qrCode.vendor_id !== vendorId) {
+    return res.status(404).json({ error: "QR code not found." });
+  }
+
+  const updatedQrCode = await prisma.vendorQrCode.update({
+    where: { qr_id: id },
+    data: {
+      points:
+        points !== undefined && points !== null
+          ? parseInt(points, 10)
+          : qrCode.points,
+      title: title !== undefined ? title?.trim() || null : qrCode.title,
+      active:
+        active === undefined
+          ? qrCode.active
+          : active === "true" || active === true,
+    },
+  });
+
+  res.status(200).json({
+    message: "Vendor QR code updated successfully",
+    qrCode: updatedQrCode,
+  });
+});
+
+export const getVendorQrRequests = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const requests = await prisma.pointIssueRequest.findMany({
+    where: { vendor_id: vendorId },
+    orderBy: { created_at: "desc" },
+    include: {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          mobile: true,
+          userProfile: {
+            select: {
+              avatar: true,
+            },
+          },
+        },
+      },
+      qrCode: true,
+    },
+  });
+
+  res.status(200).json({
+    message: "Vendor QR request list fetched successfully",
+    requests,
+  });
+});
+
+export const approveVendorQrRequest = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const { id } = req.params;
+
+  const request = await prisma.pointIssueRequest.findUnique({
+    where: { request_id: id },
+    include: {
+      qrCode: true,
+      customer: true,
+    },
+  });
+
+  if (!request || request.vendor_id !== vendorId) {
+    return res.status(404).json({ error: "Request not found." });
+  }
+
+  if (request.status !== "PENDING") {
+    return res
+      .status(400)
+      .json({ error: "Only pending requests can be approved." });
+  }
+
+  const vendor = await prisma.user.findUnique({ where: { id: vendorId } });
+  if (!vendor) {
+    return res.status(404).json({ error: "Vendor not found." });
+  }
+
+  if (vendor.points < request.points) {
+    return res.status(400).json({
+      error: "Vendor does not have enough points to approve this request.",
+    });
+  }
+
+  const referrerId =
+    request.customer.refferred_by || "e53078e7-d9a6-4707-9c91-be3a5302e05c";
+
+  await issuePoints(
+    vendorId,
+    request.customer_id,
+    request.points,
+    referrerId,
+    null,
+  );
+
+  const updatedRequest = await prisma.pointIssueRequest.update({
+    where: { request_id: id },
+    data: {
+      status: "APPROVED",
+      approved_at: new Date(),
+      approved_by: vendorId,
+    },
+  });
+
+  res.status(200).json({
+    message: "QR request approved successfully",
+    request: updatedRequest,
+  });
+});
+
+export const rejectVendorQrRequest = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const { id } = req.params;
+
+  const request = await prisma.pointIssueRequest.findUnique({
+    where: { request_id: id },
+  });
+
+  if (!request || request.vendor_id !== vendorId) {
+    return res.status(404).json({ error: "Request not found." });
+  }
+
+  if (request.status !== "PENDING") {
+    return res
+      .status(400)
+      .json({ error: "Only pending requests can be rejected." });
+  }
+
+  const updatedRequest = await prisma.pointIssueRequest.update({
+    where: { request_id: id },
+    data: {
+      status: "REJECTED",
+      approved_at: new Date(),
+      approved_by: vendorId,
+    },
+  });
+
+  res.status(200).json({
+    message: "QR request rejected successfully",
+    request: updatedRequest,
   });
 });
 
@@ -201,6 +396,8 @@ export const getVendorById = trycatch(async (req, res) => {
           address_market: true,
           address_dist: true,
           address_pin: true,
+          avatar: true,
+          banner: true,
         },
       },
     },
@@ -276,22 +473,46 @@ export const upsertVendorProfile = async (req, res) => {
       address_pin: address_pin || null,
     };
 
-    // If image uploaded
-    if (req.file) {
-      const filePath = req.file.path;
+    // If images uploaded (supports avatar and banner)
+    try {
+      if (req.files) {
+        // avatar
+        const avatarFiles = req.files.avatar || [];
+        if (avatarFiles.length > 0) {
+          const filePath = avatarFiles[0].path;
+          const result = await cloudinary.uploader.upload(filePath, {
+            folder: "vendor_profiles",
+            public_id: `vendor_${vendorId}_avatar_${Date.now()}`,
+            overwrite: true,
+          });
+          data.avatar = result.secure_url;
+          try {
+            fs.unlinkSync(filePath);
+          } catch (e) {
+            console.warn("Failed to remove temp avatar file", e);
+          }
+        }
 
-      // Upload to Cloudinary
-      const result = await cloudinary.uploader.upload(filePath, {
-        folder: "vendor_profiles",
-        public_id: `vendor_${vendorId}_${Date.now()}`,
-        overwrite: true,
-      });
-
-      // Save image URL
-      data.avatar = result.secure_url;
-
-      // Delete temp file
-      fs.unlinkSync(filePath);
+        // banner
+        const bannerFiles = req.files.banner || [];
+        if (bannerFiles.length > 0) {
+          const filePathB = bannerFiles[0].path;
+          const resultB = await cloudinary.uploader.upload(filePathB, {
+            folder: "vendor_profiles",
+            public_id: `vendor_${vendorId}_banner_${Date.now()}`,
+            overwrite: true,
+          });
+          data.banner = resultB.secure_url;
+          try {
+            fs.unlinkSync(filePathB);
+          } catch (e) {
+            console.warn("Failed to remove temp banner file", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Image upload failed:", e);
+      // continue without failing the whole request; images are optional
     }
 
     // Upsert vendor profile

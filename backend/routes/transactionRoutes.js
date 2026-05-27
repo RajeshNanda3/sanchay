@@ -7,6 +7,8 @@ import {
   getCustomerTransactions,
   getVendorTransactions,
   getCustomerIssueHistory,
+  createQrPointRequest,
+  getCustomerQrRequests,
 } from "../controllers/transactionController.js";
 import { isAuth, authorizedVendor } from "../middlewares/isAuth.js";
 
@@ -17,6 +19,10 @@ router.post("/purchase", purchasePointsHandler);
 
 //  Vendor issues points to customer
 router.post("/issue", isAuth, authorizedVendor, issuePointsHandler);
+
+//  Customer creates a QR request
+router.post("/qr-requests", isAuth, createQrPointRequest);
+router.get("/my-qr-requests", isAuth, getCustomerQrRequests);
 
 //  Customer redeems points at vendor
 

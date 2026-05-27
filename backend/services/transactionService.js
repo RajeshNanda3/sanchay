@@ -1,4 +1,5 @@
 import { prisma } from "../config/prisma.js";
+import { redisClient } from "../index.js";
 
 // Utility: Apply balance updates
 const updateBalance = async (tx, userId, amount, direction) => {
@@ -131,6 +132,14 @@ export const issuePoints = async (
     await updateBalance(tx, customerId, netPoints, "CREDIT");
     if (referrerId) await updateBalance(tx, referrerId, commission, "CREDIT");
 
+    let cacheKeyV = `profile:${vendorId}`;
+    let cacheKeyC = `profile:${customerId}`;
+    let cacheKeyR = referrerId ? `profile:${referrerId}` : null;
+    await redisClient.del(cacheKeyV);
+    await redisClient.del(cacheKeyC);
+    if (cacheKeyR) await redisClient.del(cacheKeyR);
+    // await redisClient.del( cacheKeyC);
+
     return { vendorLedger };
   });
 };
@@ -172,6 +181,11 @@ export const redeemPoints = async (customerId, vendorIdToUse, points) => {
     // Update balances
     await updateBalance(tx, customerId, points, "DEBIT");
     await updateBalance(tx, vendorId, points, "CREDIT");
+
+    let cacheKeyV = `profile:${vendorId}`;
+    let cacheKeyC = `profile:${customerId}`;
+    await redisClient.del(cacheKeyV);
+    await redisClient.del(cacheKeyC);
 
     return ledger;
   });

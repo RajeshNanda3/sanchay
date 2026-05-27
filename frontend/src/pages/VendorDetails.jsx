@@ -113,13 +113,32 @@ const VendorDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto p-8">
+        {/* Banner */}
+        {vendor.vendorProfile?.banner && (
+          <div className="mb-6 rounded-lg overflow-hidden">
+            <img
+              src={vendor.vendorProfile.banner}
+              alt={vendor.vendorProfile?.store_name || vendor.name}
+              className="w-full h-48 object-cover rounded-lg"
+            />
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow-md p-8">
           <div className="flex items-center mb-6">
-            <div className="flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-full mr-6">
-              <span className="text-3xl font-bold text-indigo-600">
-                {vendor.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            {vendor.vendorProfile?.avatar ? (
+              <img
+                src={vendor.vendorProfile.avatar}
+                alt={vendor.vendorProfile?.store_name || vendor.name}
+                className="w-20 h-20 rounded-full object-cover mr-6"
+              />
+            ) : (
+              <div className="flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-full mr-6">
+                <span className="text-3xl font-bold text-indigo-600">
+                  {vendor.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div>
               <h1 className="text-3xl font-bold text-gray-800">
                 {vendor.name}

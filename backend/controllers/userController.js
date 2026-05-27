@@ -666,7 +666,7 @@ export const getAllVendors = trycatch(async (req, res) => {
     const vendorsData = JSON.parse(cachedVendors);
     return res.status(200).json({
       message: "Vendors fetched from cache",
-      vendors: vendorsData, 
+      vendors: vendorsData,
     });
   }
 
@@ -688,6 +688,8 @@ export const getAllVendors = trycatch(async (req, res) => {
           address_market: true,
           address_dist: true,
           address_pin: true,
+          avatar: true,
+          banner: true,
         },
       },
       _count: {
@@ -752,6 +754,7 @@ export const getVendorById = trycatch(async (req, res) => {
           address_market: true,
           address_dist: true,
           address_pin: true,
+          avatar: true,
         },
       },
     },

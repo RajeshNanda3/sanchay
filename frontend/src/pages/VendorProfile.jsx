@@ -31,6 +31,8 @@ const VendorProfile = () => {
     address_pin: "",
     avatar: null,
     avatarPreview: null,
+    banner: null,
+    bannerPreview: null,
   });
   const [avatarInfo, setAvatarInfo] = useState({
     name: "",
@@ -67,6 +69,7 @@ const VendorProfile = () => {
               address_dist: p.address_dist || "",
               address_pin: p.address_pin || "",
               avatarPreview: p.avatar || null,
+              bannerPreview: p.banner || null,
             }));
           }
         }
@@ -207,6 +210,21 @@ const VendorProfile = () => {
         });
       }
     } else {
+      // banner file
+      if (name === "banner" && files && files[0]) {
+        const file = files[0];
+        if (!file.type.startsWith("image/")) {
+          return toast.error("Please choose a valid banner image file.");
+        }
+
+        setStoreData((f) => ({
+          ...f,
+          banner: file,
+          bannerPreview: URL.createObjectURL(file),
+        }));
+        return;
+      }
+
       setStoreData((f) => ({ ...f, [name]: value }));
     }
   };
@@ -261,6 +279,10 @@ const VendorProfile = () => {
         const finalAvatar = await compressImageFileIfRequired(storeData.avatar);
         form.append("avatar", finalAvatar);
       }
+      if (storeData.banner) {
+        const finalBanner = await compressImageFileIfRequired(storeData.banner);
+        form.append("banner", finalBanner);
+      }
 
       const res = await api.post("/api/v1/vendor/profile", form, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -271,6 +293,7 @@ const VendorProfile = () => {
         setStoreData((f) => ({
           ...f,
           avatarPreview: res.data.profile.avatar,
+          bannerPreview: res.data.profile.banner || f.bannerPreview,
         }));
       }
       setEditStore(false);
@@ -298,6 +321,16 @@ const VendorProfile = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* Banner */}
+        {storeData.bannerPreview && (
+          <div className="mb-6 rounded-lg overflow-hidden">
+            <img
+              src={storeData.bannerPreview}
+              alt="Store banner"
+              className="w-full h-40 md:h-56 object-cover"
+            />
+          </div>
+        )}
         {/* Header with avatar and stats */}
         <div className="bg-white rounded-lg shadow-md p-8 mb-6">
           <div className="flex items-center space-x-4 mb-6">
@@ -581,6 +614,41 @@ const VendorProfile = () => {
                   src={storeData.avatarPreview}
                   alt="avatar preview"
                   className="mt-3 h-24 w-24 rounded-full object-cover border-2 border-indigo-300"
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Store Banner
+              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <label
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-3 bg-white text-sm font-medium text-gray-700 border border-gray-300 rounded-lg shadow-sm transition hover:bg-gray-50 ${
+                    editStore
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-60"
+                  }`}
+                >
+                  Choose Banner
+                  <input
+                    name="banner"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleStoreChange}
+                    disabled={!editStore}
+                    className="hidden"
+                  />
+                </label>
+                <div className="text-sm text-gray-600">
+                  Recommended size: wide banner. Images are compressed to 1MB.
+                </div>
+              </div>
+              {storeData.bannerPreview && (
+                <img
+                  src={storeData.bannerPreview}
+                  alt="banner preview"
+                  className="mt-3 w-full max-h-40 object-cover rounded"
                 />
               )}
             </div>

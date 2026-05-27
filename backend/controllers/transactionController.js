@@ -5,6 +5,7 @@ import {
   transferPoints,
 } from "../services/transactionService.js";
 import { prisma } from "../config/prisma.js";
+import { redisClient } from "../index.js";
 
 export const purchasePointsHandler = async (req, res) => {
   try {
@@ -22,7 +23,10 @@ export const issuePointsHandler = async (req, res) => {
     const vendorId = req.user.id;
 
     const parsedPoints = parseInt(points, 10);
-    const parsedBillAmount = billAmount === undefined || billAmount === null || billAmount === "" ? null : Number(billAmount);
+    const parsedBillAmount =
+      billAmount === undefined || billAmount === null || billAmount === ""
+        ? null
+        : Number(billAmount);
 
     if (!vendorId || Number.isNaN(parsedPoints)) {
       return res
@@ -30,8 +34,15 @@ export const issuePointsHandler = async (req, res) => {
         .json({ error: "vendorId and valid points are required." });
     }
 
-    if (billAmount !== undefined && billAmount !== null && billAmount !== "" && !Number.isFinite(parsedBillAmount)) {
-      return res.status(400).json({ error: "billAmount must be a valid number." });
+    if (
+      billAmount !== undefined &&
+      billAmount !== null &&
+      billAmount !== "" &&
+      !Number.isFinite(parsedBillAmount)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "billAmount must be a valid number." });
     }
 
     if (!customerId && !mobile) {
@@ -64,18 +75,6 @@ export const issuePointsHandler = async (req, res) => {
     const referrerId =
       customer.refferred_by || "e53078e7-d9a6-4707-9c91-be3a5302e05c";
 
-    //  Check referrer exists (if provided)
-    // let referrer = null;
-    // if (referrerId) {
-    //   referrer = await prisma.user.findUnique({
-    //     where: { id: referrerId }
-    //   });
-
-    //   if (!referrer) {
-    //     return res.status(404).json({ error: "Referrer not found." });
-    //   }
-    // }
-
     //  Vendor must have enough balance
     const pointsNeeded = parsedPoints;
     if (vendor.points < pointsNeeded) {
@@ -92,8 +91,77 @@ export const issuePointsHandler = async (req, res) => {
       referrerId,
       parsedBillAmount,
     );
-
+    
     res.json({ message: "Points issued successfully", ledger });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const createQrPointRequest = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+    const { qrValue, qrId } = req.body;
+    const rawValue = qrValue || qrId;
+    const parsedQrId = rawValue
+      ? rawValue
+          .toString()
+          .replace(/^vendorqr:/i, "")
+          .trim()
+      : "";
+
+    if (!parsedQrId) {
+      return res.status(400).json({ error: "QR identifier is required." });
+    }
+
+    const qrCode = await prisma.vendorQrCode.findUnique({
+      where: { qr_id: parsedQrId },
+    });
+
+    if (!qrCode || !qrCode.active) {
+      return res.status(404).json({ error: "QR code not found or inactive." });
+    }
+
+    const request = await prisma.pointIssueRequest.create({
+      data: {
+        vendor_id: qrCode.vendor_id,
+        customer_id: customerId,
+        qr_id: qrCode.qr_id,
+        points: qrCode.points,
+        status: "PENDING",
+      },
+    });
+
+    res.status(201).json({
+      message: "QR request created successfully",
+      request,
+      qrCode,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+};
+
+export const getCustomerQrRequests = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+    const requests = await prisma.pointIssueRequest.findMany({
+      where: { customer_id: customerId },
+      orderBy: { created_at: "desc" },
+      include: {
+        qrCode: true,
+        vendor: {
+          select: { id: true, name: true, mobile: true },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: "Customer QR requests fetched successfully",
+      requests,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });

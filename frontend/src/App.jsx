@@ -24,6 +24,9 @@ import VendorTransactions from "./pages/VendorTransactions";
 import VendorProfile from "./pages/VendorProfile";
 import VendorPurchase from "./pages/VendorPurchase";
 import VendorOffers from "./pages/VendorOffers";
+import VendorQrCodes from "./pages/VendorQrCodes";
+import VendorQrRequests from "./pages/VendorQrRequests";
+import CustomerQrRequest from "./pages/CustomerQrRequest";
 import ForgotPassword from "./pages/ForgotPassword";
 import VendorDetails from "./pages/VendorDetails";
 
@@ -85,6 +88,18 @@ const App = () => {
             <Route
               path="/vendor-offers"
               element={isAuth ? <VendorOffers /> : <Login />}
+            />
+            <Route
+              path="/vendor-qr-codes"
+              element={isAuth ? <VendorQrCodes /> : <Login />}
+            />
+            <Route
+              path="/vendor-qr-requests"
+              element={isAuth ? <VendorQrRequests /> : <Login />}
+            />
+            <Route
+              path="/request-points-qr"
+              element={isAuth ? <CustomerQrRequest /> : <Login />}
             />
             <Route
               path="/profile"

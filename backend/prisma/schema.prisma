@@ -76,6 +76,10 @@ model User {
 
   vendorTransfersSent     VendorTransfer[] @relation("VendorTransfersSent")
   vendorTransfersReceived VendorTransfer[] @relation("VendorTransfersReceived")
+
+  qrCodes            VendorQrCode[]      @relation("VendorQrCodes")
+  customerQrRequests PointIssueRequest[] @relation("CustomerQrRequests")
+  vendorQrRequests   PointIssueRequest[] @relation("VendorQrRequests")
 }
 
 model UserProfile {
@@ -188,6 +192,35 @@ model VendorPurchase {
   vendor User              @relation("VendorPurchases", fields: [vendor_id], references: [id])
 }
 
+model VendorQrCode {
+  qr_id      String   @id @default(uuid())
+  vendor_id  String
+  title      String?
+  points     Int
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  vendor   User                @relation("VendorQrCodes", fields: [vendor_id], references: [id])
+  requests PointIssueRequest[] @relation("VendorQrCodeRequests")
+}
+
+model PointIssueRequest {
+  request_id  String        @id @default(uuid())
+  vendor_id   String
+  customer_id String
+  qr_id       String
+  points      Int
+  status      RequestStatus @default(PENDING)
+  created_at  DateTime      @default(now())
+  approved_at DateTime?
+  approved_by String?
+
+  vendor   User         @relation("VendorQrRequests", fields: [vendor_id], references: [id])
+  customer User         @relation("CustomerQrRequests", fields: [customer_id], references: [id])
+  qrCode   VendorQrCode @relation("VendorQrCodeRequests", fields: [qr_id], references: [qr_id])
+}
+
 // -------------------------------
 // ISSUE: Vendor gives points to customer
 // -------------------------------
@@ -199,7 +232,7 @@ model PointIssuance {
   vendor_id     String
   customer_id   String
   points_issued Int
-  bill_amount    Int?
+  bill_amount   Int?
 
   ledger   TransactionLedger @relation(fields: [transaction_id], references: [transaction_id])
   vendor   User              @relation("PointIssuances", fields: [vendor_id], references: [id])
