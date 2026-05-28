@@ -34,6 +34,12 @@ const NavBar = () => {
             >
               Transactions
             </button>
+            <button
+              onClick={() => navigate("/metrics")}
+              className="hover:bg-indigo-700 px-3 py-2 rounded-md text-sm font-medium transition"
+            >
+              Analytics
+            </button>
             <div className="flex items-center space-x-4">
               <span className="text-sm">{user?.email}</span>
               <button
@@ -88,6 +94,15 @@ const NavBar = () => {
               className="block w-full text-left hover:bg-indigo-700 px-3 py-2 rounded-md text-base font-medium"
             >
               Transactions
+            </button>
+            <button
+              onClick={() => {
+                navigate("/metrics");
+                setIsOpen(false);
+              }}
+              className="block w-full text-left hover:bg-indigo-700 px-3 py-2 rounded-md text-base font-medium"
+            >
+              Analytics
             </button>
             <button
               onClick={handleLogout}
