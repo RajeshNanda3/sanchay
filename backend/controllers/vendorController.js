@@ -243,10 +243,32 @@ export const getVendorOffers = trycatch(async (req, res) => {
   const offers = await prisma.offer.findMany({
     where: { vendor_id: vendorId },
     orderBy: { updated_at: "desc" },
+    include: {
+      recipients: {
+        select: {
+          read: true,
+          redeemed: true,
+        },
+      },
+    },
   });
+
+  const offersWithMetrics = offers.map((offer) => {
+    const totalNotified = offer.recipients.length;
+    const readCount = offer.recipients.filter((r) => r.read).length;
+    const claimedCount = offer.recipients.filter((r) => r.redeemed).length;
+    const { recipients, ...baseOffer } = offer;
+    return {
+      ...baseOffer,
+      totalNotified,
+      readCount,
+      claimedCount,
+    };
+  });
+
   res.status(200).json({
     message: "Vendor offers fetched successfully",
-    offers,
+    offers: offersWithMetrics,
   });
 });
 
@@ -268,6 +290,138 @@ export const createVendorOffer = trycatch(async (req, res) => {
   });
 
   res.status(201).json({ message: "Offer created successfully", offer });
+});
+
+export const getEligibleCustomers = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const customers = await prisma.user.findMany({
+    where: {
+      role: "USER",
+      pointIssuancesReceived: { some: { vendor_id: vendorId } },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      mobile: true,
+      points: true,
+      userProfile: {
+        select: {
+          avatar: true,
+          address_at: true,
+        },
+      },
+      pointIssuancesReceived: {
+        where: { vendor_id: vendorId },
+        orderBy: { ledger: { created_at: "asc" } },
+        select: {
+          ledger: {
+            select: { created_at: true },
+          },
+        },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  const formattedCustomers = customers.map((customer) => {
+    const txs = customer.pointIssuancesReceived || [];
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      mobile: customer.mobile,
+      points: customer.points,
+      profile_pic: customer.userProfile?.avatar || null,
+      address_at: customer.userProfile?.address_at || null,
+      first_transaction_date: txs.length ? txs[0].ledger.created_at : null,
+      last_transaction_date: txs.length
+        ? txs[txs.length - 1].ledger.created_at
+        : null,
+      transaction_count: txs.length,
+    };
+  });
+
+  res.status(200).json({
+    message: "Eligible customers fetched",
+    customers: formattedCustomers,
+  });
+});
+
+export const notifyOfferToCustomers = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const { id } = req.params; // offer id
+  const { recipientIds } = req.body; // array of customer ids
+
+  const offer = await prisma.offer.findUnique({ where: { offer_id: id } });
+  if (!offer || offer.vendor_id !== vendorId) {
+    return res
+      .status(404)
+      .json({ message: "Offer not found or not owned by vendor." });
+  }
+
+  if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "recipientIds must be a non-empty array." });
+  }
+
+  const data = recipientIds.map((customer_id) => ({
+    offer_id: id,
+    customer_id,
+  }));
+
+  // createMany with skipDuplicates avoids duplicate records if already notified
+  await prisma.offerRecipient.createMany({ data, skipDuplicates: true });
+
+  res
+    .status(200)
+    .json({ message: "Notifications queued for selected customers." });
+});
+
+export const getOfferClaims = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const claims = await prisma.offerRecipient.findMany({
+    where: {
+      redeemed: true,
+      offer: { vendor_id: vendorId },
+    },
+    include: {
+      offer: { select: { offer_id: true, title: true } },
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          mobile: true,
+          userProfile: { select: { avatar: true } },
+        },
+      },
+    },
+    orderBy: { redeemed_at: "desc" },
+  });
+
+  res.status(200).json({ message: "Offer claims fetched", claims });
+});
+
+export const markOfferClaimRead = trycatch(async (req, res) => {
+  const vendorId = req.user.id;
+  const { id } = req.params; // offer_recipient_id
+
+  const claim = await prisma.offerRecipient.findUnique({
+    where: { offer_recipient_id: id },
+    include: { offer: true },
+  });
+
+  if (!claim || claim.offer.vendor_id !== vendorId) {
+    return res.status(404).json({ message: "Claim notification not found." });
+  }
+
+  const updated = await prisma.offerRecipient.update({
+    where: { offer_recipient_id: id },
+    data: { vendor_read: true, vendor_read_at: new Date() },
+  });
+
+  res.status(200).json({ message: "Claim marked read", claim: updated });
 });
 
 export const updateVendorOffer = trycatch(async (req, res) => {

@@ -57,11 +57,12 @@ model User {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  userProfile     UserProfile?   @relation("User_Profile")
-  vendorProfile   VendorProfile? @relation("Vendor_Profile")
-  offers          Offer[]        @relation("VendorOffers")
-  ratingsGiven    Rating[]       @relation("CustomerRatings")
-  ratingsReceived Rating[]       @relation("VendorRatings")
+  userProfile     UserProfile?     @relation("User_Profile")
+  vendorProfile   VendorProfile?   @relation("Vendor_Profile")
+  offers          Offer[]          @relation("VendorOffers")
+  offerRecipients OfferRecipient[] @relation("CustomerOfferRecipients")
+  ratingsGiven    Rating[]         @relation("CustomerRatings")
+  ratingsReceived Rating[]         @relation("VendorRatings")
 
   ledgerUser          TransactionLedger[] @relation("LedgerUser")
   ledgerCorrespondent TransactionLedger[] @relation("LedgerCorrespondent")
@@ -134,7 +135,24 @@ model Offer {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  vendor User @relation("VendorOffers", fields: [vendor_id], references: [id])
+  vendor     User             @relation("VendorOffers", fields: [vendor_id], references: [id])
+  recipients OfferRecipient[]
+}
+
+model OfferRecipient {
+  offer_recipient_id String    @id @default(uuid())
+  offer_id           String
+  customer_id        String
+  notified_at        DateTime  @default(now())
+  read               Boolean   @default(false)
+  read_at            DateTime?
+  redeemed           Boolean   @default(false)
+  redeemed_at        DateTime?
+  vendor_read        Boolean   @default(false)
+  vendor_read_at     DateTime?
+
+  offer    Offer @relation(fields: [offer_id], references: [offer_id])
+  customer User  @relation("CustomerOfferRecipients", fields: [customer_id], references: [id])
 }
 
 model Rating {

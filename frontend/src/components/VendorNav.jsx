@@ -75,6 +75,12 @@ const VendorNav = () => {
                   QR Codes
                 </Link>
                 <Link
+                  to="/vendor-offer-claims"
+                  className="transition hover:text-white"
+                >
+                  Claims
+                </Link>
+                <Link
                   to="/vendor-qr-requests"
                   className="transition hover:text-white"
                 >
@@ -193,6 +199,12 @@ const VendorNav = () => {
                 className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
               >
                 QR Codes
+              </Link>
+              <Link
+                to="/vendor-offer-claims"
+                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+              >
+                Claims
               </Link>
               <Link
                 to="/vendor-qr-requests"

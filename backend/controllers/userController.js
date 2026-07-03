@@ -786,6 +786,67 @@ export const getAllCustomers = trycatch(async (req, res) => {
   });
 });
 
+export const getUserNotifications = trycatch(async (req, res) => {
+  const userId = req.user.id;
+  const notifications = await prisma.offerRecipient.findMany({
+    where: { customer_id: userId },
+    include: {
+      offer: { include: { vendor: { select: { id: true, name: true } } } },
+    },
+    orderBy: { notified_at: "desc" },
+  });
+
+  res.status(200).json({ message: "Notifications fetched", notifications });
+});
+
+export const markNotificationRead = trycatch(async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params; // offer_recipient_id
+
+  const rec = await prisma.offerRecipient.findUnique({
+    where: { offer_recipient_id: id },
+  });
+  if (!rec || rec.customer_id !== userId) {
+    return res.status(404).json({ message: "Notification not found." });
+  }
+
+  const updated = await prisma.offerRecipient.update({
+    where: { offer_recipient_id: id },
+    data: { read: true, read_at: new Date() },
+  });
+
+  res.status(200).json({ message: "Marked read", notification: updated });
+});
+
+export const claimOfferNotification = trycatch(async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params; // offer_recipient_id
+
+  const rec = await prisma.offerRecipient.findUnique({
+    where: { offer_recipient_id: id },
+  });
+
+  if (!rec || rec.customer_id !== userId) {
+    return res.status(404).json({ message: "Notification not found." });
+  }
+
+  if (rec.redeemed) {
+    return res.status(400).json({ message: "Offer already claimed." });
+  }
+
+  const updated = await prisma.offerRecipient.update({
+    where: { offer_recipient_id: id },
+    data: {
+      redeemed: true,
+      redeemed_at: new Date(),
+      read: true,
+      read_at: new Date(),
+    },
+  });
+
+  res.status(200).json({ message: "Offer claimed", notification: updated });
+});
+
 export const updateProfile = trycatch(async (req, res) => {
   const userId = req.user.id;
   const { name, mobile } = req.body;

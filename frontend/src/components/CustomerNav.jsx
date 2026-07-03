@@ -1,10 +1,42 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AppData } from "../context/AppContext";
 import { Link } from "react-router-dom";
+import api from "../apiInterceptor";
 
 const CustomerNav = () => {
   const { user, isAuth } = AppData();
   const [openMenu, setOpenMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!isAuth) return;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const { data } = await api.get("/api/v1/users/notifications");
+        const unread = (data.notifications || []).filter(
+          (item) => !item.read,
+        ).length;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.error("Failed to fetch notifications", err);
+      }
+    };
+
+    const handleNotificationUpdate = () => {
+      fetchUnreadCount();
+    };
+
+    window.addEventListener("notifications-updated", handleNotificationUpdate);
+    fetchUnreadCount();
+
+    return () => {
+      window.removeEventListener(
+        "notifications-updated",
+        handleNotificationUpdate,
+      );
+    };
+  }, [isAuth]);
 
   return (
     <nav className="relative border-b border-white/10 bg-[#09070f]/95 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
@@ -43,6 +75,12 @@ const CustomerNav = () => {
                 >
                   Scan QR
                 </Link>
+                <Link
+                  to="/notifications"
+                  className="transition hover:text-white"
+                >
+                  Notifications
+                </Link>
                 <Link to="/profile" className="transition hover:text-white">
                   Profile
                 </Link>
@@ -61,9 +99,27 @@ const CustomerNav = () => {
             {isAuth && user ? (
               <>
                 <div className="hidden sm:flex flex-col items-end text-right">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-[#c6f135] shadow-inner shadow-black/10">
-                    Hi, {user.name}
-                  </span>
+                  <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-[#c6f135] shadow-inner shadow-black/10">
+                    <span>Hi, {user.name}</span>
+                    {unreadCount > 0 && (
+                      <Link
+                        to="/notifications"
+                        className="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                        >
+                          <path d="M12 2C8.686 2 6 4.686 6 8v5.586L4.293 16.293A1 1 0 005 18h14a1 1 0 00.707-1.707L18 13.586V8c0-3.314-2.686-6-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z" />
+                        </svg>
+                        <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[0.65rem] font-bold text-white">
+                          {unreadCount}
+                        </span>
+                      </Link>
+                    )}
+                  </div>
                   <span className="text-sm text-[#d9cfb8]">
                     Points:{" "}
                     <span className="font-semibold text-[#c6f135]">
@@ -135,6 +191,12 @@ const CustomerNav = () => {
                 className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
               >
                 Scan QR
+              </Link>
+              <Link
+                to="/notifications"
+                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+              >
+                Notifications
               </Link>
               <Link
                 to="/profile"

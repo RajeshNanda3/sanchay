@@ -19,6 +19,7 @@ import CustomerNav from "./components/CustomerNav";
 import VendorNav from "./components/VendorNav";
 import CustomerTransactions from "./pages/CustomerTransaction";
 import CustomerProfile from "./pages/CustomerProfile";
+import CustomerNotifications from "./pages/CustomerNotifications";
 import IssuePoint from "./pages/IssuePoint";
 import VendorTransactions from "./pages/VendorTransactions";
 import VendorProfile from "./pages/VendorProfile";
@@ -26,6 +27,7 @@ import VendorPurchase from "./pages/VendorPurchase";
 import VendorOffers from "./pages/VendorOffers";
 import VendorQrCodes from "./pages/VendorQrCodes";
 import VendorQrRequests from "./pages/VendorQrRequests";
+import VendorOfferClaims from "./pages/VendorOfferClaims";
 import CustomerQrRequest from "./pages/CustomerQrRequest";
 import ForgotPassword from "./pages/ForgotPassword";
 import VendorDetails from "./pages/VendorDetails";
@@ -98,8 +100,16 @@ const App = () => {
               element={isAuth ? <VendorQrRequests /> : <Login />}
             />
             <Route
+              path="/vendor-offer-claims"
+              element={isAuth ? <VendorOfferClaims /> : <Login />}
+            />
+            <Route
               path="/request-points-qr"
               element={isAuth ? <CustomerQrRequest /> : <Login />}
+            />
+            <Route
+              path="/notifications"
+              element={isAuth ? <CustomerNotifications /> : <Login />}
             />
             <Route
               path="/profile"

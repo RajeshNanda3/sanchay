@@ -91,7 +91,7 @@ export const issuePointsHandler = async (req, res) => {
       referrerId,
       parsedBillAmount,
     );
-    
+
     res.json({ message: "Points issued successfully", ledger });
   } catch (e) {
     console.error(e);
@@ -234,9 +234,9 @@ export const getCustomerTransactions = async (req, res) => {
     const userId = req.user.id;
     const { type, startDate, endDate } = req.query;
 
-    // Build filter
+    // Build filter - only transactions where the customer is the primary account holder
     const where = {
-      OR: [{ user_id: userId }, { correspondent_id: userId }],
+      user_id: userId,
     };
 
     if (type && type !== "ALL") {

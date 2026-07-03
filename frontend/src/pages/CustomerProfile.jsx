@@ -69,16 +69,102 @@ const CustomerProfile = () => {
     setPersonalData((f) => ({ ...f, [name]: value }));
   };
 
+  const MAX_IMAGE_SIZE = 1024 * 1024;
+  const MAX_IMAGE_DIMENSION = 1920;
+
+  const compressImageFileIfRequired = async (file) => {
+    if (!file || !file.type.startsWith("image/")) return file;
+    if (file.size <= MAX_IMAGE_SIZE) return file;
+
+    const imageUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.src = imageUrl;
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+    URL.revokeObjectURL(imageUrl);
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+    let width = image.naturalWidth;
+    let height = image.naturalHeight;
+    let quality = 0.92;
+    const maxDimension = Math.max(width, height);
+    if (maxDimension > MAX_IMAGE_DIMENSION) {
+      const ratio = MAX_IMAGE_DIMENSION / maxDimension;
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+
+    let currentWidth = width;
+    let currentHeight = height;
+
+    const toBlob = () =>
+      new Promise((resolve) => {
+        canvas.toBlob(resolve, mimeType, quality);
+      });
+
+    const compress = async () => {
+      canvas.width = currentWidth;
+      canvas.height = currentHeight;
+      ctx.clearRect(0, 0, currentWidth, currentHeight);
+      ctx.drawImage(image, 0, 0, currentWidth, currentHeight);
+      return await toBlob();
+    };
+
+    let blob = await compress();
+    while (blob && blob.size > MAX_IMAGE_SIZE) {
+      if (quality > 0.35) {
+        quality -= 0.1;
+      } else if (currentWidth > 600 && currentHeight > 600) {
+        currentWidth = Math.round(currentWidth * 0.9);
+        currentHeight = Math.round(currentHeight * 0.9);
+      } else {
+        break;
+      }
+      blob = await compress();
+    }
+
+    if (blob && blob.size <= MAX_IMAGE_SIZE) {
+      const extension = mimeType === "image/png" ? ".png" : ".jpg";
+      const fileName = file.name.replace(/\.[^/.]+$/, extension);
+      return new File([blob], fileName, { type: mimeType });
+    }
+
+    return file;
+  };
+
   // Handle profile data change
-  const handleProfileChange = (e) => {
+  const handleProfileChange = async (e) => {
     const { name, value, files } = e.target;
     if (name === "avatar" && files && files[0]) {
       const file = files[0];
-      setProfileData((f) => ({
-        ...f,
-        avatar: file,
-        avatarPreview: URL.createObjectURL(file),
-      }));
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please choose a valid image file.");
+        return;
+      }
+
+      try {
+        const compressedFile = await compressImageFileIfRequired(file);
+        const previewUrl = URL.createObjectURL(compressedFile);
+        setProfileData((f) => ({
+          ...f,
+          avatar: compressedFile,
+          avatarPreview: previewUrl,
+        }));
+        if (compressedFile.size > MAX_IMAGE_SIZE) {
+          toast.warn(
+            "Selected image is still larger than 1MB after resizing. Please choose a smaller image.",
+          );
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error(
+          "Failed to process the image. Please try a smaller or different file.",
+        );
+      }
     } else {
       setProfileData((f) => ({ ...f, [name]: value }));
     }

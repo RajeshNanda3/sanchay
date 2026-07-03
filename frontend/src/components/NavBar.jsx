@@ -19,10 +19,12 @@ const NavBar = () => {
           to="/"
           className="inline-flex items-center gap-3 text-xl font-black tracking-wide text-white"
         >
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f5d17f] text-sm font-bold text-[#1f1b0f] shadow-lg shadow-[#f5d17f]/20">
-            S
-          </span>
-          Sanchay
+          <img
+            src="/sanchay-logo.png"
+            alt="Sanchay logo"
+            className="h-10 w-10 rounded-full object-cover"
+          />
+          <span>Sanchay</span>
         </Link>
 
         <nav className="flex flex-wrap items-center justify-center gap-4 text-sm font-medium text-[#d9cfb8] md:justify-start">

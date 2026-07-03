@@ -23,6 +23,9 @@ import {
   adminController,
   getAllVendors,
   getAllCustomers,
+  getUserNotifications,
+  markNotificationRead,
+  claimOfferNotification,
   updateProfile,
   checkReferrer,
   forgotPassword,
@@ -34,13 +37,16 @@ import { verifyCSRFToken } from "../config/csrfMiddleware.js";
 
 const router = express.Router();
 // Sample route for user registration
-router.post("/register",
+router.post(
+  "/register",
   rateLimiter({
     windowSeconds: 60,
     maxAttempts: 3,
     keyGenerator: (req) => req.body.mobile,
     message: "Please wait before requesting another OTP.",
-  }), registerUser);
+  }),
+  registerUser,
+);
 router.post("/register/verify-otp", verifyOTPRegister); // NEW: OTP verification for registration
 router.post("/check-referrer", checkReferrer);
 router.post("/verify/:token", verifyUser);
@@ -55,6 +61,9 @@ router.post("/profile", isAuth, upload.single("avatar"), upsertProfile);
 
 router.get("/vendors", isAuth, getAllVendors);
 router.get("/customers", isAuth, getAllCustomers);
+router.get("/notifications", isAuth, getUserNotifications);
+router.patch("/notifications/:id/read", isAuth, markNotificationRead);
+router.post("/notifications/:id/claim", isAuth, claimOfferNotification);
 router.post("/refresh", refreshToken);
 router.post("/logout", isAuth, logoutUser);
 router.post("/refresh-csrf", isAuth, refreshCSRF);

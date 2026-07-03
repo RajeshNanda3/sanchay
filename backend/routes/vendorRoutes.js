@@ -8,6 +8,10 @@ import {
   getVendorOffers,
   createVendorOffer,
   updateVendorOffer,
+  getEligibleCustomers,
+  notifyOfferToCustomers,
+  getOfferClaims,
+  markOfferClaimRead,
   getVendorOffersPublic,
   getVendorRatings,
   rateVendor,
@@ -50,8 +54,27 @@ router.post(
 );
 
 router.get("/offers", isAuth, authorizedVendor, getVendorOffers);
+router.get(
+  "/eligible-customers",
+  isAuth,
+  authorizedVendor,
+  getEligibleCustomers,
+);
 router.post("/offers", isAuth, authorizedVendor, createVendorOffer);
 router.put("/offers/:id", isAuth, authorizedVendor, updateVendorOffer);
+router.post(
+  "/offers/:id/notify",
+  isAuth,
+  authorizedVendor,
+  notifyOfferToCustomers,
+);
+router.get("/offer-claims", isAuth, authorizedVendor, getOfferClaims);
+router.patch(
+  "/offer-claims/:id/read",
+  isAuth,
+  authorizedVendor,
+  markOfferClaimRead,
+);
 
 // Vendor Profile endpoints (MUST be before /:id route)
 router.get("/profile", isAuth, authorizedVendor, getVendorProfile);
