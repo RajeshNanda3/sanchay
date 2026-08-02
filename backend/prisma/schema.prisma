@@ -23,6 +23,12 @@ enum EntityType {
   ADMIN
 }
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
 enum TxnType {
   PURCHASE
   ISSUE
@@ -46,6 +52,7 @@ model User {
   email  String     @unique
   mobile String     @unique
   role   EntityType @default(USER)
+  status UserStatus @default(ACTIVE)
 
   password String
 
@@ -90,11 +97,14 @@ model UserProfile {
   avatar     String? // url/path to avatar
 
   // explicit address fields
-  address_at     String?
-  address_po     String?
-  address_market String?
-  address_dist   String?
-  address_pin    String?
+  address_at          String?
+  address_po          String?
+  address_market      String?
+  address_dist        String?
+  address_pin         String?
+  latitude            Float?
+  longitude           Float?
+  location_updated_at DateTime?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -112,11 +122,16 @@ model VendorProfile {
   redeem_option     RedeemOption @default(PENDING)
 
   // explicit address fields
-  address_at     String?
-  address_po     String?
-  address_market String?
-  address_dist   String?
-  address_pin    String?
+  address_at          String?
+  address_po          String?
+  address_market      String?
+  address_dist        String?
+  address_pin         String?
+  address_state       String?
+  address_block       String?
+  latitude            Float?
+  longitude           Float?
+  location_updated_at DateTime?
 
   avatar     String?
   banner     String?

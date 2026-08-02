@@ -14,23 +14,111 @@ const CustomerHero = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [vendorOffers, setVendorOffers] = useState([]);
   const [offersLoading, setOffersLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationStatus, setLocationStatus] = useState(
+    "Finding your location...",
+  );
+  const [selectedFilter, setSelectedFilter] = useState("pincode");
+  const [searchValue, setSearchValue] = useState("");
+  const [activeFilter, setActiveFilter] = useState(null);
+  const [activeFilterValue, setActiveFilterValue] = useState("");
 
   useEffect(() => {
-    fetchVendors();
+    const loadVendors = async () => {
+      if (!navigator.geolocation) {
+        setLocationStatus("Location access is unavailable on this device");
+        await fetchVendors();
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setUserLocation(location);
+          setLocationStatus("Showing vendors within 2 km of your location");
+          try {
+            await api.post("/api/v1/users/location", location);
+          } catch (err) {
+            console.error("Failed to save user location", err);
+          }
+          await fetchVendors(location);
+        },
+        async () => {
+          setLocationStatus("Location permission denied; showing all vendors");
+          await fetchVendors();
+        },
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    };
+
+    loadVendors();
   }, []);
 
-  const fetchVendors = async () => {
+  const fetchVendors = async (
+    location = null,
+    searchFilters = {},
+    useLocationScope = false,
+  ) => {
     try {
       setLoading(true);
-      const { data } = await api.get("/api/v1/users/vendors");
+      const normalizedFilters = Object.fromEntries(
+        Object.entries(searchFilters || {}).filter(([, value]) => {
+          if (value === null || value === undefined) return false;
+          return value.toString().trim() !== "";
+        }),
+      );
+      const params = {
+        ...normalizedFilters,
+      };
+
+      if (useLocationScope && location) {
+        params.latitude = location.latitude;
+        params.longitude = location.longitude;
+        params.radiusKm = 2;
+      }
+
+      const { data } = await api.get("/api/v1/users/vendors", { params });
       setVendors(data.vendors || []);
-      // console.log(vendor.vendorProfile.store_name)
+      setError(null);
     } catch (err) {
       setError(err.message || "Failed to fetch vendors");
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFilterSelection = (event) => {
+    setSelectedFilter(event.target.value);
+    setSearchValue("");
+  };
+
+  const handleSearchValueChange = (event) => {
+    setSearchValue(event.target.value);
+  };
+
+  const handleApplyFilters = async (event) => {
+    event.preventDefault();
+    const filterPayload = {
+      [selectedFilter]: searchValue,
+    };
+    setActiveFilter(selectedFilter);
+    setActiveFilterValue(searchValue);
+    await fetchVendors(
+      userLocation,
+      filterPayload,
+      Boolean(searchValue.trim()),
+    );
+  };
+
+  const handleClearFilters = async () => {
+    setSearchValue("");
+    setActiveFilter(null);
+    setActiveFilterValue("");
+    await fetchVendors(null, {}, false);
   };
 
   const fetchVendorOffers = async (vendor) => {
@@ -54,13 +142,130 @@ const CustomerHero = () => {
     setVendorOffers([]);
   };
 
+  const filterFields = [
+    { label: "Pincode", name: "pincode", placeholder: "e.g. 700001" },
+    {
+      label: "Market Name",
+      name: "marketName",
+      placeholder: "e.g. New Market",
+    },
+    { label: "District", name: "district", placeholder: "e.g. Kolkata" },
+    { label: "State", name: "state", placeholder: "e.g. West Bengal" },
+    { label: "Block", name: "block", placeholder: "e.g. Block A" },
+    { label: "Vendor Name", name: "vendorName", placeholder: "e.g. Sanchay" },
+  ];
+
+  const hasActiveFilters = Boolean(
+    activeFilterValue && activeFilterValue.toString().trim(),
+  );
+
+  const openDirections = (vendor) => {
+    const destLat = vendor.vendorProfile?.latitude;
+    const destLng = vendor.vendorProfile?.longitude;
+
+    if (userLocation && destLat && destLng) {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${userLocation.latitude},${userLocation.longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    if (destLat && destLng) {
+      const searchUrl = `https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`;
+      window.open(searchUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const query = encodeURIComponent(
+      vendor.vendorProfile?.address_market ||
+        vendor.vendorProfile?.address_at ||
+        vendor.vendorProfile?.store_name ||
+        vendor.name,
+    );
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${query}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
   return (
     <div className="customer-hero p-8 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Our Vendors</h1>
-        <p className="text-gray-600 mb-8">
-          Explore all our trusted vendors and their offerings
-        </p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              Nearby Vendors
+            </h1>
+            <p className="text-gray-600">
+              Discover vendors close to you and open directions to reach them
+            </p>
+          </div>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <p className="font-semibold">{locationStatus}</p>
+            {userLocation && (
+              <p className="text-xs text-emerald-600 mt-1">
+                Using your current location for route directions
+              </p>
+            )}
+          </div>
+        </div>
+
+        <form
+          onSubmit={handleApplyFilters}
+          className="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+        >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr_auto_auto] md:items-end">
+            <label className="text-sm text-gray-700">
+              <span className="mb-1 block font-medium">Search by</span>
+              <select
+                value={selectedFilter}
+                onChange={handleFilterSelection}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              >
+                {filterFields.map((field) => (
+                  <option key={field.name} value={field.name}>
+                    {field.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-gray-700">
+              <span className="mb-1 block font-medium">Search value</span>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={handleSearchValueChange}
+                placeholder={
+                  filterFields.find((field) => field.name === selectedFilter)
+                    ?.placeholder
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Clear
+            </button>
+          </div>
+          {hasActiveFilters && (
+            <p className="mt-3 text-sm text-gray-500">
+              Showing vendors within 2 km of your current location matching{" "}
+              {filterFields
+                .find((field) => field.name === activeFilter)
+                ?.label?.toLowerCase()}{" "}
+              “{activeFilterValue}”.
+            </p>
+          )}
+        </form>
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -70,7 +275,13 @@ const CustomerHero = () => {
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             <p>Error: {error}</p>
             <button
-              onClick={fetchVendors}
+              onClick={() =>
+                fetchVendors(
+                  userLocation,
+                  hasActiveFilters ? { [activeFilter]: activeFilterValue } : {},
+                  hasActiveFilters,
+                )
+              }
               className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
               Retry
@@ -134,7 +345,7 @@ const CustomerHero = () => {
                       {vendor.vendorProfile?.address_market}
                     </span>
                   </h3>
-                  <div className="mb-3 flex items-center justify-center gap-2">
+                  <div className="mb-3 flex items-center justify-center gap-2 flex-wrap">
                     <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
                       ★ {vendor.average_rating?.toFixed(1) ?? "0.0"}
                     </span>
@@ -142,6 +353,12 @@ const CustomerHero = () => {
                       {vendor.rating_count ?? 0} review
                       {vendor.rating_count === 1 ? "" : "s"}
                     </span>
+                    {vendor.distance_km !== null &&
+                      vendor.distance_km !== undefined && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          {vendor.distance_km.toFixed(1)} km away
+                        </span>
+                      )}
                   </div>
                   <div className="space-y-2 text-sm text-gray-600">
                     <p>
@@ -162,12 +379,20 @@ const CustomerHero = () => {
                       Joined: {new Date(vendor.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <button
-                    className="w-full mt-4 bg-indigo-500 text-white py-2 rounded hover:bg-indigo-600 transition"
-                    onClick={() => navigate(`/vendor-details/${vendor.id}`)}
-                  >
-                    View Details
-                  </button>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <button
+                      className="w-full bg-indigo-500 text-white py-2 rounded hover:bg-indigo-600 transition"
+                      onClick={() => navigate(`/vendor-details/${vendor.id}`)}
+                    >
+                      View Details
+                    </button>
+                    <button
+                      className="w-full border border-emerald-500 text-emerald-700 py-2 rounded hover:bg-emerald-50 transition"
+                      onClick={() => openDirections(vendor)}
+                    >
+                      Open directions
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

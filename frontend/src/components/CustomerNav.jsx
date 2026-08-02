@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { AppData } from "../context/AppContext";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import api from "../apiInterceptor";
 
 const CustomerNav = () => {
@@ -38,6 +38,22 @@ const CustomerNav = () => {
     };
   }, [isAuth]);
 
+  const handleNavSelect = () => setOpenMenu(false);
+
+  const desktopLinkClass = ({ isActive }) =>
+    `px-2 py-1 rounded-full text-sm font-medium transition ${
+      isActive
+        ? "bg-[#f5d17f]/15 text-white shadow-sm"
+        : "text-[#c6f135] hover:text-white"
+    }`;
+
+  const mobileLinkClass = ({ isActive }) =>
+    `block px-3 py-2 rounded-md text-base font-medium transition ${
+      isActive
+        ? "bg-[#f5d17f]/15 text-white shadow-sm"
+        : "text-[#d9cfb8] hover:bg-[#f5d17f]/10 hover:text-white"
+    }`;
+
   return (
     <nav className="relative border-b border-white/10 bg-[#09070f]/95 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div
@@ -61,35 +77,29 @@ const CustomerNav = () => {
 
           {/* desktop links */}
           <div className="hidden md:flex items-center space-x-6 text-sm font-medium text-[#c6f135]">
-            <Link to="/customer-hero" className="transition hover:text-white">
-              My Page
-            </Link>
+            <NavLink to="/customer-hero" className={desktopLinkClass}>
+              Vendors
+            </NavLink>
             {isAuth && (
               <>
-                <Link to="/redeem" className="transition hover:text-white">
+                <NavLink to="/redeem" className={desktopLinkClass}>
                   Redeem Points
-                </Link>
-                <Link
-                  to="/request-points-qr"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/request-points-qr" className={desktopLinkClass}>
                   Scan QR
-                </Link>
-                <Link
-                  to="/notifications"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/notifications" className={desktopLinkClass}>
                   Notifications
-                </Link>
-                <Link to="/profile" className="transition hover:text-white">
+                </NavLink>
+                <NavLink to="/profile" className={desktopLinkClass}>
                   Profile
-                </Link>
-                <Link
+                </NavLink>
+                <NavLink
                   to="/customer-transactions"
-                  className="transition hover:text-white"
+                  className={desktopLinkClass}
                 >
                   Transactions
-                </Link>
+                </NavLink>
               </>
             )}
           </div>
@@ -114,7 +124,7 @@ const CustomerNav = () => {
                         >
                           <path d="M12 2C8.686 2 6 4.686 6 8v5.586L4.293 16.293A1 1 0 005 18h14a1 1 0 00.707-1.707L18 13.586V8c0-3.314-2.686-6-6-6zm0 20a3 3 0 003-3H9a3 3 0 003 3z" />
                         </svg>
-                        <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-[0.65rem] font-bold text-white">
+                        <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[0.65rem] font-bold text-white">
                           {unreadCount}
                         </span>
                       </Link>
@@ -139,7 +149,7 @@ const CustomerNav = () => {
 
             {/* mobile toggle */}
             <button
-              className="md:hidden inline-flex justify-center items-center p-2 rounded-md text-[#d9cfb8] hover:text-white focus:outline-none"
+              className="md:hidden relative inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-[#d9cfb8] hover:text-white focus:outline-none"
               onClick={() => setOpenMenu(!openMenu)}
             >
               <svg
@@ -164,6 +174,11 @@ const CustomerNav = () => {
                   />
                 )}
               </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[0.65rem] font-bold text-white">
+                  {unreadCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -172,44 +187,61 @@ const CustomerNav = () => {
       {/* mobile menu */}
       {openMenu && (
         <div className="md:hidden bg-[#09070f] shadow-inner px-2 pt-2 pb-3 space-y-1">
-          <Link
+          <NavLink
             to="/customer-hero"
-            className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+            className={mobileLinkClass}
+            onClick={handleNavSelect}
           >
-            My Page
-          </Link>
+            Vendors
+          </NavLink>
           {isAuth && (
             <>
-              <Link
+              <NavLink
                 to="/redeem"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Redeem Points
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/request-points-qr"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Scan QR
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/notifications"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={({ isActive }) =>
+                  `flex items-center justify-between rounded-md px-3 py-2 text-base font-medium transition ${
+                    isActive
+                      ? "bg-[#f5d17f]/15 text-white shadow-sm"
+                      : "text-[#d9cfb8] hover:bg-[#f5d17f]/10 hover:text-white"
+                  }`
+                }
+                onClick={handleNavSelect}
               >
-                Notifications
-              </Link>
-              <Link
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-[0.7rem] font-semibold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink
                 to="/profile"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Profile
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/customer-transactions"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Transactions
-              </Link>
+              </NavLink>
             </>
           )}
         </div>

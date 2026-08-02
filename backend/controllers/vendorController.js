@@ -550,6 +550,8 @@ export const getVendorById = trycatch(async (req, res) => {
           address_market: true,
           address_dist: true,
           address_pin: true,
+          address_state: true,
+          address_block: true,
           avatar: true,
           banner: true,
         },
@@ -599,6 +601,10 @@ export const upsertVendorProfile = async (req, res) => {
       address_market,
       address_dist,
       address_pin,
+      address_state,
+      address_block,
+      latitude,
+      longitude,
     } = req.body || {};
 
     // Parse deals_with if it's a string
@@ -615,6 +621,9 @@ export const upsertVendorProfile = async (req, res) => {
     }
 
     // Prepare data object
+    const parsedLatitude = latitude !== undefined ? Number(latitude) : null;
+    const parsedLongitude = longitude !== undefined ? Number(longitude) : null;
+
     const data = {
       store_name: store_name || null,
       category: category || null,
@@ -625,6 +634,17 @@ export const upsertVendorProfile = async (req, res) => {
       address_market: address_market || null,
       address_dist: address_dist || null,
       address_pin: address_pin || null,
+      address_state: address_state || null,
+      address_block: address_block || null,
+      latitude:
+        parsedLatitude !== null && Number.isFinite(parsedLatitude)
+          ? parsedLatitude
+          : null,
+      longitude:
+        parsedLongitude !== null && Number.isFinite(parsedLongitude)
+          ? parsedLongitude
+          : null,
+      location_updated_at: new Date(),
     };
 
     // If images uploaded (supports avatar and banner)

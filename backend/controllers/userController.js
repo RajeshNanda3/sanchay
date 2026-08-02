@@ -546,6 +546,8 @@ export const upsertProfile = async (req, res) => {
       address_market,
       address_dist,
       address_pin,
+      address_state,
+      address_block,
     } = req.body || {};
 
     // Prepare data object
@@ -556,6 +558,8 @@ export const upsertProfile = async (req, res) => {
       address_market: address_market || null,
       address_dist: address_dist || null,
       address_pin: address_pin || null,
+      address_state: address_state || null,
+      address_block: address_block || null,
     };
 
     // If image uploaded
@@ -657,28 +661,75 @@ export const adminController = trycatch(async (req, res) => {
   });
 });
 
-export const getAllVendors = trycatch(async (req, res) => {
-  const cacheKey = "all_vendors";
+export const updateUserLocation = trycatch(async (req, res) => {
+  const userId = req.user.id;
+  const { latitude, longitude } = req.body || {};
 
-  // Try to get from cache first
-  const cachedVendors = await redisClient.get(cacheKey);
-  if (cachedVendors) {
-    const vendorsData = JSON.parse(cachedVendors);
-    return res.status(200).json({
-      message: "Vendors fetched from cache",
-      vendors: vendorsData,
-    });
+  const parsedLatitude = Number(latitude);
+  const parsedLongitude = Number(longitude);
+
+  if (
+    Number.isNaN(parsedLatitude) ||
+    Number.isNaN(parsedLongitude) ||
+    parsedLatitude < -90 ||
+    parsedLatitude > 90 ||
+    parsedLongitude < -180 ||
+    parsedLongitude > 180
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Valid latitude and longitude are required" });
   }
 
-  // If not in cache, fetch from database
+  const profile = await prisma.userProfile.upsert({
+    where: { user_id: userId },
+    update: {
+      latitude: parsedLatitude,
+      longitude: parsedLongitude,
+      location_updated_at: new Date(),
+    },
+    create: {
+      user_id: userId,
+      latitude: parsedLatitude,
+      longitude: parsedLongitude,
+      location_updated_at: new Date(),
+    },
+  });
+
+  res.status(200).json({
+    message: "Location updated successfully",
+    profile,
+  });
+});
+
+export const getAllVendors = trycatch(async (req, res) => {
+  const radiusKm = Number(req.query.radiusKm || 2);
+  const latitude = Number(req.query.latitude);
+  const longitude = Number(req.query.longitude);
+  const pincode = req.query.pincode?.toString() || "";
+  const marketName = req.query.marketName?.toString() || "";
+  const district = req.query.district?.toString() || "";
+  const state = req.query.state?.toString() || "";
+  const block = req.query.block?.toString() || "";
+  const vendorName = req.query.vendorName?.toString() || "";
+
+  const filters = { pincode, marketName, district, state, block, vendorName };
+
+  const hasUserLocation =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
+
   const vendors = await prisma.user.findMany({
-    where: { role: "VENDOR" },
+    where: { role: "VENDOR", status: "ACTIVE" },
     select: {
       id: true,
       name: true,
       email: true,
       mobile: true,
-      // points: true,
       created_at: true,
       vendorProfile: {
         select: {
@@ -688,6 +739,10 @@ export const getAllVendors = trycatch(async (req, res) => {
           address_market: true,
           address_dist: true,
           address_pin: true,
+          address_state: true,
+          address_block: true,
+          latitude: true,
+          longitude: true,
           avatar: true,
           banner: true,
         },
@@ -716,21 +771,73 @@ export const getAllVendors = trycatch(async (req, res) => {
     return map;
   }, {});
 
-  const vendorsWithOfferCount = vendors.map((vendor) => ({
-    ...vendor,
-    offer_count: vendor._count?.offers ?? 0,
-    rating_count: vendor._count?.ratingsReceived ?? 0,
-    average_rating: ratingMap[vendor.id]?.average_rating ?? 0,
-  }));
+  const normalize = (value) => (value ?? "").toString().trim().toLowerCase();
+  const matchesVendorFilters = (vendor, searchFilters = {}) => {
+    const profile = vendor.vendorProfile || {};
+    const checks = [
+      ["pincode", profile.address_pin],
+      ["marketName", profile.address_market],
+      ["district", profile.address_dist],
+      ["state", profile.address_state],
+      ["block", profile.address_block],
+      ["vendorName", profile.store_name || vendor.name],
+    ];
 
-  // Save to cache for future requests (e.g., 10 minutes)
-  await redisClient.set(cacheKey, JSON.stringify(vendorsWithOfferCount), {
-    EX: 600,
-  });
+    return checks.every(([key, value]) => {
+      const filterValue = normalize(searchFilters[key]);
+      if (!filterValue) return true;
+      return normalize(value).includes(filterValue);
+    });
+  };
+
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const getDistanceKm = (lat1, lng1, lat2, lng2) => {
+    const earthRadiusKm = 6371;
+    const dLat = toRadians(lat2 - lat1);
+    const dLng = toRadians(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRadians(lat1)) *
+        Math.cos(toRadians(lat2)) *
+        Math.sin(dLng / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  };
+
+  const vendorsWithOfferCount = vendors
+    .map((vendor) => {
+      const vendorLat = vendor.vendorProfile?.latitude ?? null;
+      const vendorLng = vendor.vendorProfile?.longitude ?? null;
+      let distanceKm = null;
+
+      if (hasUserLocation && vendorLat !== null && vendorLng !== null) {
+        distanceKm = getDistanceKm(latitude, longitude, vendorLat, vendorLng);
+      }
+
+      return {
+        ...vendor,
+        offer_count: vendor._count?.offers ?? 0,
+        rating_count: vendor._count?.ratingsReceived ?? 0,
+        average_rating: ratingMap[vendor.id]?.average_rating ?? 0,
+        distance_km: distanceKm !== null ? Number(distanceKm.toFixed(1)) : null,
+      };
+    })
+    .filter((vendor) => {
+      if (!matchesVendorFilters(vendor, filters)) return false;
+      if (!hasUserLocation) return true;
+      if (vendor.distance_km === null) return false;
+      return vendor.distance_km <= radiusKm;
+    })
+    .sort((a, b) => {
+      if (a.distance_km === null) return 1;
+      if (b.distance_km === null) return -1;
+      return a.distance_km - b.distance_km;
+    });
 
   res.status(200).json({
     message: "Vendors fetched successfully",
     vendors: vendorsWithOfferCount,
+    userLocation: hasUserLocation ? { latitude, longitude, radiusKm } : null,
   });
 });
 

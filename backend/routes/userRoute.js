@@ -21,6 +21,7 @@ import {
   logoutUser,
   refreshCSRF,
   adminController,
+  updateUserLocation,
   getAllVendors,
   getAllCustomers,
   getUserNotifications,
@@ -59,6 +60,7 @@ router.put("/update-profile", isAuth, updateProfile);
 router.get("/profile", isAuth, getProfile);
 router.post("/profile", isAuth, upload.single("avatar"), upsertProfile);
 
+router.post("/location", isAuth, updateUserLocation);
 router.get("/vendors", isAuth, getAllVendors);
 router.get("/customers", isAuth, getAllCustomers);
 router.get("/notifications", isAuth, getUserNotifications);

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { AppData } from "../context/AppContext";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 const VendorNav = () => {
   const { user, isAuth, logout } = AppData();
@@ -9,6 +9,22 @@ const VendorNav = () => {
   const handleLogout = () => {
     if (logout) logout();
   };
+
+  const handleNavSelect = () => setOpenMenu(false);
+
+  const desktopLinkClass = ({ isActive }) =>
+    `px-2 py-1 rounded-full text-sm font-medium transition ${
+      isActive
+        ? "bg-[#f5d17f]/15 text-white shadow-sm"
+        : "text-[#c6f135] hover:text-white"
+    }`;
+
+  const mobileLinkClass = ({ isActive }) =>
+    `block px-3 py-2 rounded-md text-base font-medium transition ${
+      isActive
+        ? "bg-[#f5d17f]/15 text-white shadow-sm"
+        : "text-[#d9cfb8] hover:bg-[#f5d17f]/10 hover:text-white"
+    }`;
 
   return (
     <nav className="relative border-b border-white/10 bg-[#09070f]/95 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
@@ -45,53 +61,35 @@ const VendorNav = () => {
 
           {/* desktop links */}
           <div className="hidden md:flex items-center space-x-6 text-sm font-medium text-[#c6f135]">
-            <Link to="/" className="transition hover:text-white">
+            <NavLink to="/" className={desktopLinkClass}>
               Home
-            </Link>
+            </NavLink>
             {isAuth && (
               <>
-                <Link to="/issue" className="transition hover:text-white">
+                <NavLink to="/issue" className={desktopLinkClass}>
                   Issue Points
-                </Link>
-                <Link to="/purchase" className="transition hover:text-white">
+                </NavLink>
+                <NavLink to="/purchase" className={desktopLinkClass}>
                   Purchase
-                </Link>
-                <Link
-                  to="/vendor-transactions"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/vendor-transactions" className={desktopLinkClass}>
                   Transactions
-                </Link>
-                <Link
-                  to="/vendor-offers"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/vendor-offers" className={desktopLinkClass}>
                   Offers
-                </Link>
-                <Link
-                  to="/vendor-qr-codes"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/vendor-qr-codes" className={desktopLinkClass}>
                   QR Codes
-                </Link>
-                <Link
-                  to="/vendor-offer-claims"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/vendor-offer-claims" className={desktopLinkClass}>
                   Claims
-                </Link>
-                <Link
-                  to="/vendor-qr-requests"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/vendor-qr-requests" className={desktopLinkClass}>
                   Requests
-                </Link>
-                <Link
-                  to="/vendor-profile"
-                  className="transition hover:text-white"
-                >
+                </NavLink>
+                <NavLink to="/vendor-profile" className={desktopLinkClass}>
                   Profile
-                </Link>
+                </NavLink>
               </>
             )}
           </div>
@@ -162,62 +160,67 @@ const VendorNav = () => {
       {/* mobile menu */}
       {openMenu && (
         <div className="md:hidden bg-[#09070f] shadow-inner px-2 pt-2 pb-3 space-y-1">
-          <Link
-            to="/"
-            className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
-          >
+          <NavLink to="/" className={mobileLinkClass} onClick={handleNavSelect}>
             Home
-          </Link>
+          </NavLink>
           {isAuth && (
             <>
-              <Link
+              <NavLink
                 to="/issue"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Issue Points
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/purchase"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Purchase
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/vendor-transactions"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Transactions
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/vendor-offers"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Offers
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/vendor-qr-codes"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 QR Codes
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/vendor-offer-claims"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Claims
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/vendor-qr-requests"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Requests
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/vendor-profile"
-                className="block px-3 py-2 rounded-md text-base font-medium text-[#d9cfb8] transition hover:bg-[#f5d17f]/10 hover:text-white"
+                className={mobileLinkClass}
+                onClick={handleNavSelect}
               >
                 Profile
-              </Link>
+              </NavLink>
             </>
           )}
         </div>

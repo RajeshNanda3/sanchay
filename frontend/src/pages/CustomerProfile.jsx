@@ -23,6 +23,8 @@ const CustomerProfile = () => {
     address_market: "",
     address_dist: "",
     address_pin: "",
+    address_state: "",
+    address_block: "",
     avatar: null,
     avatarPreview: null,
   });
@@ -49,6 +51,8 @@ const CustomerProfile = () => {
               address_market: p.address_market || "",
               address_dist: p.address_dist || "",
               address_pin: p.address_pin || "",
+              address_state: p.address_state || "",
+              address_block: p.address_block || "",
               avatarPreview: p.avatar || null,
             }));
           }
@@ -203,6 +207,8 @@ const CustomerProfile = () => {
       form.append("address_market", profileData.address_market);
       form.append("address_dist", profileData.address_dist);
       form.append("address_pin", profileData.address_pin);
+      form.append("address_state", profileData.address_state);
+      form.append("address_block", profileData.address_block);
       if (profileData.avatar) {
         form.append("avatar", profileData.avatar);
       }
@@ -399,6 +405,24 @@ const CustomerProfile = () => {
                   <input
                     name="address_pin"
                     value={profileData.address_pin}
+                    onChange={handleProfileChange}
+                    className="mt-1 block w-full border rounded p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm">State</label>
+                  <input
+                    name="address_state"
+                    value={profileData.address_state}
+                    onChange={handleProfileChange}
+                    className="mt-1 block w-full border rounded p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm">Block</label>
+                  <input
+                    name="address_block"
+                    value={profileData.address_block}
                     onChange={handleProfileChange}
                     className="mt-1 block w-full border rounded p-2"
                   />

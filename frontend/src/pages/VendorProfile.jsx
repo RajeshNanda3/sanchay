@@ -29,6 +29,10 @@ const VendorProfile = () => {
     address_market: "",
     address_dist: "",
     address_pin: "",
+    address_state: "",
+    address_block: "",
+    latitude: "",
+    longitude: "",
     avatar: null,
     avatarPreview: null,
     banner: null,
@@ -41,6 +45,7 @@ const VendorProfile = () => {
     error: "",
   });
   const [savingStore, setSavingStore] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   // Load profile on mount
   useEffect(() => {
@@ -68,6 +73,10 @@ const VendorProfile = () => {
               address_market: p.address_market || "",
               address_dist: p.address_dist || "",
               address_pin: p.address_pin || "",
+              address_state: p.address_state || "",
+              address_block: p.address_block || "",
+              latitude: p.latitude ?? "",
+              longitude: p.longitude ?? "",
               avatarPreview: p.avatar || null,
               bannerPreview: p.banner || null,
             }));
@@ -229,6 +238,30 @@ const VendorProfile = () => {
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      return toast.error("Geolocation is not supported in this browser");
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setStoreData((f) => ({
+          ...f,
+          latitude: position.coords.latitude.toString(),
+          longitude: position.coords.longitude.toString(),
+        }));
+        setLocationLoading(false);
+        toast.success("Current location captured");
+      },
+      () => {
+        setLocationLoading(false);
+        toast.error("Unable to access your current location");
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
   // Save personal details
   const handleSavePersonal = async (e) => {
     e.preventDefault();
@@ -275,6 +308,10 @@ const VendorProfile = () => {
       form.append("address_market", storeData.address_market);
       form.append("address_dist", storeData.address_dist);
       form.append("address_pin", storeData.address_pin);
+      form.append("address_state", storeData.address_state);
+      form.append("address_block", storeData.address_block);
+      form.append("latitude", storeData.latitude || "");
+      form.append("longitude", storeData.longitude || "");
       if (storeData.avatar) {
         const finalAvatar = await compressImageFileIfRequired(storeData.avatar);
         form.append("avatar", finalAvatar);
@@ -515,6 +552,16 @@ const VendorProfile = () => {
             </div>
             <fieldset className="border p-4 rounded">
               <legend className="text-sm font-medium">Store Address</legend>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={locationLoading}
+                  className="mb-4 rounded bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {locationLoading ? "Capturing..." : "Use my current location"}
+                </button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 <div>
                   <label className="block text-sm">AT</label>
@@ -561,6 +608,26 @@ const VendorProfile = () => {
                   <input
                     name="address_pin"
                     value={storeData.address_pin}
+                    onChange={handleStoreChange}
+                    disabled={!editStore}
+                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm">State</label>
+                  <input
+                    name="address_state"
+                    value={storeData.address_state}
+                    onChange={handleStoreChange}
+                    disabled={!editStore}
+                    className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm">Block</label>
+                  <input
+                    name="address_block"
+                    value={storeData.address_block}
                     onChange={handleStoreChange}
                     disabled={!editStore}
                     className="mt-1 block w-full border rounded p-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
