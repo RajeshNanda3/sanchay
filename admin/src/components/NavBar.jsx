@@ -34,12 +34,18 @@ const NavBar = () => {
             >
               Transactions
             </button>
-            <button
-              onClick={() => navigate("/metrics")}
-              className="hover:bg-indigo-700 px-3 py-2 rounded-md text-sm font-medium transition"
-            >
-              Analytics
-            </button>
+              <button
+                onClick={() => navigate("/metrics")}
+                className="hover:bg-indigo-700 px-3 py-2 rounded-md text-sm font-medium transition"
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => navigate("/vendors")}
+                className="hover:bg-indigo-700 px-3 py-2 rounded-md text-sm font-medium transition"
+              >
+                Vendors
+              </button>
             <div className="flex items-center space-x-4">
               <span className="text-sm">{user?.email}</span>
               <button
@@ -95,15 +101,24 @@ const NavBar = () => {
             >
               Transactions
             </button>
-            <button
-              onClick={() => {
-                navigate("/metrics");
-                setIsOpen(false);
-              }}
-              className="block w-full text-left hover:bg-indigo-700 px-3 py-2 rounded-md text-base font-medium"
-            >
-              Analytics
-            </button>
+              <button
+                onClick={() => {
+                  navigate("/metrics");
+                  setIsOpen(false);
+                }}
+                className="block w-full text-left hover:bg-indigo-700 px-3 py-2 rounded-md text-base font-medium"
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => {
+                  navigate("/vendors");
+                  setIsOpen(false);
+                }}
+                className="block w-full text-left hover:bg-indigo-700 px-3 py-2 rounded-md text-base font-medium"
+              >
+                Vendors
+              </button>
             <button
               onClick={handleLogout}
               className="block w-full text-left bg-red-500 hover:bg-red-600 px-3 py-2 rounded-md text-base font-medium"

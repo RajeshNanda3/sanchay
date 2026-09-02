@@ -3,13 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { AppData } from "../context/AppContext";
 import CustomerNav from "../components/CustomerNav";
 import api from "../apiInterceptor";
+import { useVendors } from "../hooks/useVendors";
 
 const CustomerHero = () => {
-  const { user, isAuth } = AppData();
   const navigate = useNavigate();
-  const [vendors, setVendors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { vendors, loading, error, refetch: refetchVendors } = useVendors();
   const [showOffersModal, setShowOffersModal] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [vendorOffers, setVendorOffers] = useState([]);
@@ -20,14 +18,16 @@ const CustomerHero = () => {
   );
   const [selectedFilter, setSelectedFilter] = useState("pincode");
   const [searchValue, setSearchValue] = useState("");
+  const [radiusKm, setRadiusKm] = useState(2);
   const [activeFilter, setActiveFilter] = useState(null);
   const [activeFilterValue, setActiveFilterValue] = useState("");
+  const [activeRadiusKm, setActiveRadiusKm] = useState(2);
 
   useEffect(() => {
     const loadVendors = async () => {
       if (!navigator.geolocation) {
         setLocationStatus("Location access is unavailable on this device");
-        await fetchVendors();
+        refetchVendors();
         return;
       }
 
@@ -38,58 +38,24 @@ const CustomerHero = () => {
             longitude: position.coords.longitude,
           };
           setUserLocation(location);
-          setLocationStatus("Showing vendors within 2 km of your location");
+          setLocationStatus("Location detected");
           try {
             await api.post("/api/v1/users/location", location);
           } catch (err) {
             console.error("Failed to save user location", err);
           }
-          await fetchVendors(location);
+          refetchVendors({ location });
         },
         async () => {
           setLocationStatus("Location permission denied; showing all vendors");
-          await fetchVendors();
+          refetchVendors();
         },
         { enableHighAccuracy: true, timeout: 10000 },
       );
     };
 
     loadVendors();
-  }, []);
-
-  const fetchVendors = async (
-    location = null,
-    searchFilters = {},
-    useLocationScope = false,
-  ) => {
-    try {
-      setLoading(true);
-      const normalizedFilters = Object.fromEntries(
-        Object.entries(searchFilters || {}).filter(([, value]) => {
-          if (value === null || value === undefined) return false;
-          return value.toString().trim() !== "";
-        }),
-      );
-      const params = {
-        ...normalizedFilters,
-      };
-
-      if (useLocationScope && location) {
-        params.latitude = location.latitude;
-        params.longitude = location.longitude;
-        params.radiusKm = 2;
-      }
-
-      const { data } = await api.get("/api/v1/users/vendors", { params });
-      setVendors(data.vendors || []);
-      setError(null);
-    } catch (err) {
-      setError(err.message || "Failed to fetch vendors");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [refetchVendors]);
 
   const handleFilterSelection = (event) => {
     setSelectedFilter(event.target.value);
@@ -107,18 +73,22 @@ const CustomerHero = () => {
     };
     setActiveFilter(selectedFilter);
     setActiveFilterValue(searchValue);
-    await fetchVendors(
-      userLocation,
-      filterPayload,
-      Boolean(searchValue.trim()),
-    );
+    setActiveRadiusKm(radiusKm);
+    await refetchVendors({
+      location: userLocation,
+      filters: filterPayload,
+      radiusKm,
+      useLocationScope: false,
+    });
   };
 
   const handleClearFilters = async () => {
     setSearchValue("");
+    setRadiusKm(2);
     setActiveFilter(null);
     setActiveFilterValue("");
-    await fetchVendors(null, {}, false);
+    setActiveRadiusKm(2);
+    await refetchVendors({ radiusKm: 2, useLocationScope: false });
   };
 
   const fetchVendorOffers = async (vendor) => {
@@ -130,7 +100,6 @@ const CustomerHero = () => {
       setShowOffersModal(true);
     } catch (err) {
       console.error("Failed to fetch vendor offers:", err);
-      setError("Failed to load offers");
     } finally {
       setOffersLoading(false);
     }
@@ -214,7 +183,7 @@ const CustomerHero = () => {
           onSubmit={handleApplyFilters}
           className="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
         >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr_auto_auto] md:items-end">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_1fr_auto_120px_auto_auto] md:items-end">
             <label className="text-sm text-gray-700">
               <span className="mb-1 block font-medium">Search by</span>
               <select
@@ -242,6 +211,17 @@ const CustomerHero = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
               />
             </label>
+            <label className="text-sm text-gray-700">
+              <span className="mb-1 block font-medium">Radius (km)</span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={radiusKm}
+                onChange={(e) => setRadiusKm(Math.max(1, Number(e.target.value) || 1))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </label>
             <button
               type="submit"
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -258,11 +238,11 @@ const CustomerHero = () => {
           </div>
           {hasActiveFilters && (
             <p className="mt-3 text-sm text-gray-500">
-              Showing vendors within 2 km of your current location matching{" "}
+              Showing vendors within {activeRadiusKm} km of "{activeFilterValue}" matching{" "}
               {filterFields
                 .find((field) => field.name === activeFilter)
                 ?.label?.toLowerCase()}{" "}
-              “{activeFilterValue}”.
+              "{activeFilterValue}".
             </p>
           )}
         </form>
@@ -276,11 +256,12 @@ const CustomerHero = () => {
             <p>Error: {error}</p>
             <button
               onClick={() =>
-                fetchVendors(
-                  userLocation,
-                  hasActiveFilters ? { [activeFilter]: activeFilterValue } : {},
-                  hasActiveFilters,
-                )
+                refetchVendors({
+                  location: userLocation,
+                  filters: hasActiveFilters ? { [activeFilter]: activeFilterValue } : {},
+                  radiusKm: activeRadiusKm,
+                  useLocationScope: false,
+                })
               }
               className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >

@@ -561,6 +561,9 @@ export const getVendorById = trycatch(async (req, res) => {
   if (!vendor) {
     return res.status(404).json({ message: "Vendor not found" });
   }
+  if (vendor.status === "INACTIVE") {
+    return res.status(404).json({ message: "Vendor is currently inactive" });
+  }
   res.status(200).json({
     message: "Vendor fetched successfully",
     vendor,

@@ -9,6 +9,7 @@ import VerifyOtp from "./pages/VerifyOtp";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import AdminMetrics from "./pages/AdminMetrics";
+import AdminVendors from "./pages/AdminVendors";
 import NavBar from "./components/NavBar";
 
 const App = () => {
@@ -47,6 +48,10 @@ const App = () => {
             <Route
               path="/metrics"
               element={isAuth ? <AdminMetrics /> : <Login />}
+            />
+            <Route
+              path="/vendors"
+              element={isAuth ? <AdminVendors /> : <Login />}
             />
             <Route path="/" element={isAuth ? <Dashboard /> : <Login />} />
           </Routes>

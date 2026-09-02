@@ -8,6 +8,8 @@ import {
   getDayWiseIssuesHandler,
   getReferrerJoinsHandler,
   getVendorSpendingHandler,
+  getAllVendorsAdmin,
+  toggleVendorStatus,
 } from "../controllers/adminController.js";
 import { isAuth, authorizedAdmin } from "../middlewares/isAuth.js";
 const router = express.Router();
@@ -54,5 +56,12 @@ router.post(
   isAuth,
   authorizedAdmin,
   rejectPurchaseRequestHandler,
+);
+router.get("/vendors", isAuth, authorizedAdmin, getAllVendorsAdmin);
+router.post(
+  "/vendors/:vendorId/toggle-status",
+  isAuth,
+  authorizedAdmin,
+  toggleVendorStatus,
 );
 export default router;

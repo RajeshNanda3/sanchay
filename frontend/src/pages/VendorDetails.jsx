@@ -28,7 +28,9 @@ const VendorDetails = () => {
       const { data } = await api.get(`/api/v1/vendor/${id}`);
       setVendor(data.vendor);
     } catch (err) {
-      setError(err.message || "Failed to fetch vendor details");
+      const message =
+        err.response?.data?.message || err.message || "Failed to fetch vendor details";
+      setError(message);
       console.error(err);
     } finally {
       setLoading(false);
@@ -87,16 +89,37 @@ const VendorDetails = () => {
   }
 
   if (error) {
+    const isInactive = error.includes("inactive");
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md">
-          <p>Error: {error}</p>
-          <button
-            onClick={fetchVendorDetails}
-            className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-          >
-            Retry
-          </button>
+        <div
+          className={`px-4 py-3 rounded max-w-md ${
+            isInactive
+              ? "bg-yellow-100 border border-yellow-400 text-yellow-700"
+              : "bg-red-100 border border-red-400 text-red-700"
+          }`}
+        >
+          <p>
+            {isInactive
+              ? "This vendor is currently inactive."
+              : `Error: ${error}`}
+          </p>
+          {!isInactive && (
+            <button
+              onClick={fetchVendorDetails}
+              className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            >
+              Retry
+            </button>
+          )}
+          {isInactive && (
+            <button
+              onClick={() => navigate("/customer-hero")}
+              className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+            >
+              Browse Vendors
+            </button>
+          )}
         </div>
       </div>
     );

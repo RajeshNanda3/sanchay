@@ -702,18 +702,163 @@ export const updateUserLocation = trycatch(async (req, res) => {
   });
 });
 
+// export const getAllVendors = trycatch(async (req, res) => {
+//   const radiusKm = Number(req.query.radiusKm || 2);
+//   const latitude = Number(req.query.latitude);
+//   const longitude = Number(req.query.longitude);
+//   const pincode = req.query.pincode?.toString() || "";
+//   const marketName = req.query.marketName?.toString() || "";
+//   const district = req.query.district?.toString() || "";
+//   const state = req.query.state?.toString() || "";
+//   const block = req.query.block?.toString() || "";
+//   const vendorName = req.query.vendorName?.toString() || "";
+
+//   const filters = { pincode, marketName, district, state, block, vendorName };
+
+//   console.log(req.query.pincode, "query")
+//   console.log(pincode)
+//   console.log(filters)
+
+//   const hasUserLocation =
+//     Number.isFinite(latitude) &&
+//     Number.isFinite(longitude) &&
+//     latitude >= -90 &&
+//     latitude <= 90 &&
+//     longitude >= -180 &&
+//     longitude <= 180;
+
+//   const vendors = await prisma.user.findMany({
+//     where: { role: "VENDOR", status: "ACTIVE" } ,
+//     select: {
+//       id: true,
+//       name: true,
+//       email: true,
+//       mobile: true,
+//       created_at: true,
+//       vendorProfile: {
+//         select: {
+//           store_name: true,
+//           address_at: true,
+//           address_po: true,
+//           address_market: true,
+//           address_dist: true,
+//           address_pin: true,
+//           address_state: true,
+//           address_block: true,
+//           latitude: true,
+//           longitude: true,
+//           avatar: true,
+//           banner: true,
+//         },
+//       },
+//       _count: {
+//         select: {
+//           offers: true,
+//           ratingsReceived: true,
+//         },
+//       },
+//     },
+//   });
+
+//   // console.log(vendors)
+//   const vendorIds = vendors.map((vendor) => vendor.id);
+//   const ratingSummaries = await prisma.rating.groupBy({
+//     by: ["vendor_id"],
+//     where: { vendor_id: { in: vendorIds } },
+//     _avg: {
+//       stars: true,
+//     },
+//   });
+//   const ratingMap = ratingSummaries.reduce((map, summary) => {
+//     map[summary.vendor_id] = {
+//       average_rating: summary._avg?.stars || 0,
+//     };
+//     return map;
+//   }, {});
+
+//   const normalize = (value) => (value ?? "").toString().trim().toLowerCase();
+//   const matchesVendorFilters = (vendor, searchFilters = {}) => {
+//     const profile = vendor.vendorProfile || {};
+//     const checks = [
+//       ["pincode", profile.address_pin],
+//       ["marketName", profile.address_market],
+//       ["district", profile.address_dist],
+//       ["state", profile.address_state],
+//       ["block", profile.address_block],
+//       ["vendorName", profile.store_name || vendor.name],
+//     ];
+
+//     return checks.every(([key, value]) => {
+//       const filterValue = normalize(searchFilters[key]);
+//       if (!filterValue) return true;
+//       return normalize(value).includes(filterValue);
+//     });
+//   };
+
+//   const toRadians = (value) => (value * Math.PI) / 180;
+//   const getDistanceKm = (lat1, lng1, lat2, lng2) => {
+//     const earthRadiusKm = 6371;
+//     const dLat = toRadians(lat2 - lat1);
+//     const dLng = toRadians(lng2 - lng1);
+//     const a =
+//       Math.sin(dLat / 2) ** 2 +
+//       Math.cos(toRadians(lat1)) *
+//         Math.cos(toRadians(lat2)) *
+//         Math.sin(dLng / 2) ** 2;
+//     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+//     return earthRadiusKm * c;
+//   };
+
+//   const vendorsWithOfferCount = vendors
+//     .map((vendor) => {
+//       const vendorLat = vendor.vendorProfile?.latitude ?? null;
+//       const vendorLng = vendor.vendorProfile?.longitude ?? null;
+//       let distanceKm = null;
+
+//       if (hasUserLocation && vendorLat !== null && vendorLng !== null) {
+//         distanceKm = getDistanceKm(latitude, longitude, vendorLat, vendorLng);
+//       }
+
+//       return {
+//         ...vendor,
+//         offer_count: vendor._count?.offers ?? 0,
+//         rating_count: vendor._count?.ratingsReceived ?? 0,
+//         average_rating: ratingMap[vendor.id]?.average_rating ?? 0,
+//         distance_km: distanceKm !== null ? Number(distanceKm.toFixed(1)) : null,
+//       };
+//     })
+//     .filter((vendor) => {
+//       if (!matchesVendorFilters(vendor, filters)) return false;
+//       if (!hasUserLocation) return true;
+//       if (vendor.distance_km === null) return false;
+//       return vendor.distance_km <= radiusKm;
+//     })
+//     .sort((a, b) => {
+//       if (a.distance_km === null) return 1;
+//       if (b.distance_km === null) return -1;
+//       return a.distance_km - b.distance_km;
+//     });
+
+//   res.status(200).json({
+//     message: "Vendors fetched successfully",
+//     vendors: vendorsWithOfferCount,
+//     userLocation: hasUserLocation ? { latitude, longitude, radiusKm } : null,
+//   });
+// });
+
+
 export const getAllVendors = trycatch(async (req, res) => {
   const radiusKm = Number(req.query.radiusKm || 2);
+
   const latitude = Number(req.query.latitude);
   const longitude = Number(req.query.longitude);
-  const pincode = req.query.pincode?.toString() || "";
-  const marketName = req.query.marketName?.toString() || "";
-  const district = req.query.district?.toString() || "";
-  const state = req.query.state?.toString() || "";
-  const block = req.query.block?.toString() || "";
-  const vendorName = req.query.vendorName?.toString() || "";
 
-  const filters = { pincode, marketName, district, state, block, vendorName };
+  const pincode = req.query.pincode?.toString().trim() || "";
+  const marketName = req.query.marketName?.toString().trim() || "";
+  const district = req.query.district?.toString().trim() || "";
+  const state = req.query.state?.toString().trim() || "";
+  const block = req.query.block?.toString().trim() || "";
+  const vendorName = req.query.vendorName?.toString().trim() || "";
 
   const hasUserLocation =
     Number.isFinite(latitude) &&
@@ -723,14 +868,69 @@ export const getAllVendors = trycatch(async (req, res) => {
     longitude >= -180 &&
     longitude <= 180;
 
+  const hasTextFilter =
+    Boolean(pincode) || Boolean(marketName) || Boolean(district) ||
+    Boolean(state) || Boolean(block) || Boolean(vendorName);
+
+  // Build ONLY the filters that frontend actually sent
+  const vendorProfileFilter = {};
+
+  if (pincode) {
+    vendorProfileFilter.address_pin = {
+      contains: pincode,
+      mode: "insensitive",
+    };
+  }
+
+  if (marketName) {
+    vendorProfileFilter.address_market = {
+      contains: marketName,
+      mode: "insensitive",
+    };
+  }
+
+  if (district) {
+    vendorProfileFilter.address_dist = {
+      contains: district,
+      mode: "insensitive",
+    };
+  }
+
+  if (state) {
+    vendorProfileFilter.address_state = {
+      contains: state,
+      mode: "insensitive",
+    };
+  }
+
+  if (block) {
+    vendorProfileFilter.address_block = {
+      contains: block,
+      mode: "insensitive",
+    };
+  }
+console.log(vendorProfileFilter)
+  const where = {
+    role: "VENDOR",
+    status: "ACTIVE",
+
+    // Only add vendorProfile filtering when at least
+    // one profile filter was provided.
+    ...(Object.keys(vendorProfileFilter).length > 0 && {
+      vendorProfile: vendorProfileFilter,
+    }),
+  };
+
   const vendors = await prisma.user.findMany({
-    where: { role: "VENDOR", status: "ACTIVE" },
+    where,
+
     select: {
       id: true,
       name: true,
       email: true,
       mobile: true,
       created_at: true,
+
       vendorProfile: {
         select: {
           store_name: true,
@@ -747,6 +947,7 @@ export const getAllVendors = trycatch(async (req, res) => {
           banner: true,
         },
       },
+
       _count: {
         select: {
           offers: true,
@@ -755,89 +956,162 @@ export const getAllVendors = trycatch(async (req, res) => {
       },
     },
   });
+console.log("filtered",vendors, "a")
+  // vendorName needs special handling because it can match
+  // either store_name OR user.name.
+  let filteredVendors = vendors;
 
-  const vendorIds = vendors.map((vendor) => vendor.id);
+  if (vendorName) {
+    const search = vendorName.toLowerCase();
+
+    filteredVendors = vendors.filter((vendor) => {
+      const storeName =
+        vendor.vendorProfile?.store_name?.toLowerCase() || "";
+
+      const name = vendor.name?.toLowerCase() || "";
+
+      return (
+        storeName.includes(search) ||
+        name.includes(search)
+      );
+    });
+  }
+
+  const vendorIds = filteredVendors.map((vendor) => vendor.id);
+
   const ratingSummaries = await prisma.rating.groupBy({
     by: ["vendor_id"],
-    where: { vendor_id: { in: vendorIds } },
+    where: {
+      vendor_id: {
+        in: vendorIds,
+      },
+    },
     _avg: {
       stars: true,
     },
   });
+
   const ratingMap = ratingSummaries.reduce((map, summary) => {
     map[summary.vendor_id] = {
       average_rating: summary._avg?.stars || 0,
     };
+
     return map;
   }, {});
 
-  const normalize = (value) => (value ?? "").toString().trim().toLowerCase();
-  const matchesVendorFilters = (vendor, searchFilters = {}) => {
-    const profile = vendor.vendorProfile || {};
-    const checks = [
-      ["pincode", profile.address_pin],
-      ["marketName", profile.address_market],
-      ["district", profile.address_dist],
-      ["state", profile.address_state],
-      ["block", profile.address_block],
-      ["vendorName", profile.store_name || vendor.name],
-    ];
+  let centerLat = null;
+  let centerLng = null;
+  let centerSource = null;
 
-    return checks.every(([key, value]) => {
-      const filterValue = normalize(searchFilters[key]);
-      if (!filterValue) return true;
-      return normalize(value).includes(filterValue);
-    });
-  };
+  if (hasUserLocation) {
+    centerLat = latitude;
+    centerLng = longitude;
+    centerSource = "user";
+  } else if (hasTextFilter && filteredVendors.length > 0) {
+    const withCoords = filteredVendors.filter(
+      (v) =>
+        v.vendorProfile?.latitude != null &&
+        v.vendorProfile?.longitude != null,
+    );
+    if (withCoords.length > 0) {
+      centerLat =
+        withCoords.reduce(
+          (sum, v) => sum + v.vendorProfile.latitude,
+          0,
+        ) / withCoords.length;
+      centerLng =
+        withCoords.reduce(
+          (sum, v) => sum + v.vendorProfile.longitude,
+          0,
+        ) / withCoords.length;
+      centerSource = "computed";
+    }
+  }
 
   const toRadians = (value) => (value * Math.PI) / 180;
+
   const getDistanceKm = (lat1, lng1, lat2, lng2) => {
     const earthRadiusKm = 6371;
+
     const dLat = toRadians(lat2 - lat1);
     const dLng = toRadians(lng2 - lng1);
+
     const a =
       Math.sin(dLat / 2) ** 2 +
       Math.cos(toRadians(lat1)) *
         Math.cos(toRadians(lat2)) *
         Math.sin(dLng / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const c =
+      2 * Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a),
+      );
+
     return earthRadiusKm * c;
   };
 
-  const vendorsWithOfferCount = vendors
+  const vendorsWithDetails = filteredVendors
     .map((vendor) => {
-      const vendorLat = vendor.vendorProfile?.latitude ?? null;
-      const vendorLng = vendor.vendorProfile?.longitude ?? null;
+      const vendorLat =
+        vendor.vendorProfile?.latitude ?? null;
+
+      const vendorLng =
+        vendor.vendorProfile?.longitude ?? null;
+
       let distanceKm = null;
 
-      if (hasUserLocation && vendorLat !== null && vendorLng !== null) {
-        distanceKm = getDistanceKm(latitude, longitude, vendorLat, vendorLng);
+      if (
+        centerLat != null &&
+        centerLng != null &&
+        Number.isFinite(centerLat) &&
+        Number.isFinite(centerLng) &&
+        vendorLat !== null &&
+        vendorLng !== null
+      ) {
+        distanceKm = getDistanceKm(
+          centerLat,
+          centerLng,
+          vendorLat,
+          vendorLng,
+        );
       }
 
       return {
         ...vendor,
         offer_count: vendor._count?.offers ?? 0,
         rating_count: vendor._count?.ratingsReceived ?? 0,
-        average_rating: ratingMap[vendor.id]?.average_rating ?? 0,
-        distance_km: distanceKm !== null ? Number(distanceKm.toFixed(1)) : null,
+        average_rating:
+          ratingMap[vendor.id]?.average_rating ?? 0,
+        distance_km:
+          distanceKm !== null
+            ? Number(distanceKm.toFixed(1))
+            : null,
       };
     })
     .filter((vendor) => {
-      if (!matchesVendorFilters(vendor, filters)) return false;
-      if (!hasUserLocation) return true;
+      if (centerLat == null || centerLng == null) return true;
+
       if (vendor.distance_km === null) return false;
+
       return vendor.distance_km <= radiusKm;
     })
     .sort((a, b) => {
       if (a.distance_km === null) return 1;
       if (b.distance_km === null) return -1;
+
       return a.distance_km - b.distance_km;
     });
 
   res.status(200).json({
     message: "Vendors fetched successfully",
-    vendors: vendorsWithOfferCount,
-    userLocation: hasUserLocation ? { latitude, longitude, radiusKm } : null,
+    vendors: vendorsWithDetails,
+    userLocation:
+      centerSource === "user"
+        ? { latitude, longitude, radiusKm, source: "user" }
+        : centerSource === "computed"
+          ? { latitude: centerLat, longitude: centerLng, radiusKm, source: "computed" }
+          : null,
   });
 });
 
@@ -868,6 +1142,9 @@ export const getVendorById = trycatch(async (req, res) => {
   });
   if (!vendor) {
     return res.status(404).json({ message: "Vendor not found" });
+  }
+  if (vendor.status === "INACTIVE") {
+    return res.status(404).json({ message: "Vendor is currently inactive" });
   }
   res.status(200).json({
     message: "Vendor fetched successfully",

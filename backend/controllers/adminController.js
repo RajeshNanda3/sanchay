@@ -1,4 +1,5 @@
 import { prisma } from "../config/prisma.js";
+import trycatch from "../middlewares/trycatch.js";
 import { purchasePoints } from "../services/transactionService.js";
 
 export const approvePurchaseRequestHandler = async (req, res) => {
@@ -490,3 +491,114 @@ export const getVendorSpendingHandler = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getAllVendorsAdmin = trycatch(async (req, res) => {
+  const { status, search } = req.query;
+
+  const where = { role: "VENDOR" };
+
+  if (status && ["ACTIVE", "INACTIVE"].includes(status)) {
+    where.status = status;
+  }
+
+  if (search && search.trim()) {
+    const searchTerm = search.trim().toLowerCase();
+    where.OR = [
+      { name: { contains: searchTerm, mode: "insensitive" } },
+      { email: { contains: searchTerm, mode: "insensitive" } },
+      {
+        vendorProfile: {
+          store_name: { contains: searchTerm, mode: "insensitive" },
+        },
+      },
+    ];
+  }
+
+  const vendors = await prisma.user.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      mobile: true,
+      status: true,
+      created_at: true,
+      vendorProfile: {
+        select: {
+          store_name: true,
+          category: true,
+          market_name: true,
+          address_at: true,
+          address_po: true,
+          address_market: true,
+          address_dist: true,
+          address_pin: true,
+          address_state: true,
+          address_block: true,
+          avatar: true,
+          banner: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
+      _count: {
+        select: {
+          offers: true,
+          ratingsReceived: true,
+        },
+      },
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  res.status(200).json({
+    message: "Vendors fetched successfully",
+    vendors,
+  });
+});
+
+export const toggleVendorStatus = trycatch(async (req, res) => {
+  const { vendorId } = req.params;
+  const { status } = req.body;
+
+  if (!["ACTIVE", "INACTIVE"].includes(status)) {
+    return res
+      .status(400)
+      .json({ message: "Status must be ACTIVE or INACTIVE" });
+  }
+
+  const vendor = await prisma.user.findUnique({
+    where: { id: vendorId, role: "VENDOR" },
+    select: { id: true, status: true },
+  });
+
+  if (!vendor) {
+    return res.status(404).json({ message: "Vendor not found" });
+  }
+
+  if (vendor.status === status) {
+    return res.status(400).json({ message: `Vendor is already ${status}` });
+  }
+
+  const updatedVendor = await prisma.user.update({
+    where: { id: vendorId },
+    data: { status },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      mobile: true,
+      status: true,
+      vendorProfile: {
+        select: {
+          store_name: true,
+        },
+      },
+    },
+  });
+
+  res.status(200).json({
+    message: `Vendor status changed to ${status}`,
+    vendor: updatedVendor,
+  });
+});
